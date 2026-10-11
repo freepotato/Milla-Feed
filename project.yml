@@ -22,6 +22,11 @@ settings:
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+    # Xcode 27 已移除传统 headermap，必须显式关闭用户路径搜索
+    ALWAYS_SEARCH_USER_PATHS: NO
+    # 只编当前架构：否则模拟器会同时编 x86_64+arm64，而 SwiftPM 本地包
+    # 只产 arm64 模块，x86_64 一路会报 "built for incompatible target"
+    ONLY_ACTIVE_ARCH: YES
 
 targets:
   Milla:
