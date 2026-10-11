@@ -1,0 +1,25 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # release-please 会：
+      # - 解析 Conventional Commits（feat -> minor，fix -> patch）
+      # - 维护 CHANGELOG.md 与 .release-please-manifest.json
+      # - 首次 release 时创建 GitHub Release 并打 tag vX.Y.Z
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

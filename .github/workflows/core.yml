@@ -1,0 +1,41 @@
+name: millacore-tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Packages/MillaCore/**"
+      - "Fixtures/**"
+      - ".github/workflows/core.yml"
+  pull_request:
+    paths:
+      - "Packages/MillaCore/**"
+      - "Fixtures/**"
+      - ".github/workflows/core.yml"
+
+jobs:
+  core-tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Swift toolchain
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
+
+      - name: Run algorithm self-check (milla-cli verify)
+        run: swift run milla-cli verify
+        working-directory: Packages/MillaCore
+
+      - name: Run XCTest suite
+        run: swift test
+        working-directory: Packages/MillaCore
+
+      - name: Rank bundled RSS fixtures
+        run: swift run milla-cli rank ../../Fixtures
+        working-directory: Packages/MillaCore

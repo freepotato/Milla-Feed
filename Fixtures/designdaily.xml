@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>DesignDaily</title>
+  <link rel="alternate" href="https://designdaily.example.com"/>
+  <id>https://designdaily.example.com/atom</id>
+  <updated>2026-10-11T09:00:00Z</updated>
+  <entry>
+    <title>Designing for glass: depth without noise</title>
+    <id>designdaily-glass</id>
+    <link rel="alternate" href="https://designdaily.example.com/glass"/>
+    <published>2026-10-11T09:00:00Z</published>
+    <updated>2026-10-11T09:00:00Z</updated>
+    <author><name>Sora Park</name></author>
+    <content type="html">&lt;img src="https://designdaily.example.com/img/glass.jpg"/&gt;&lt;p&gt;Translucent materials demand stronger hierarchy and contrast discipline.&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <title>Typography scales that survive foldables</title>
+    <id>designdaily-type</id>
+    <link rel="alternate" href="https://designdaily.example.com/type"/>
+    <published>2026-10-11T02:30:00Z</published>
+    <author><name>Sora Park</name></author>
+    <summary>Fluid type scales beat fixed breakpoints on expanding screens.</summary>
+  </entry>
+</feed>

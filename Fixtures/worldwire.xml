@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>WorldWire</title>
+    <link>https://worldwire.example.com</link>
+    <description>World news briefings</description>
+    <item>
+      <title>Markets react to weekend summit</title>
+      <link>https://worldwire.example.com/markets</link>
+      <guid>worldwire-markets</guid>
+      <pubDate>Sun, 11 Oct 2026 11:05:00 GMT</pubDate>
+      <dc:creator>Léo Martin</dc:creator>
+      <enclosure url="https://worldwire.example.com/img/markets.avif" type="image/avif"/>
+      <description>Global markets opened mixed after the weekend summit.</description>
+    </item>
+    <item>
+      <title>High-speed rail expansion announced</title>
+      <link>https://worldwire.example.com/rail</link>
+      <guid>worldwire-rail</guid>
+      <pubDate>Sun, 11 Oct 2026 05:20:00 GMT</pubDate>
+      <description>Three new lines will connect coastal cities by 2029.</description>
+    </item>
+    <item>
+      <title>Coastal cleanup sets record</title>
+      <link>https://worldwire.example.com/cleanup</link>
+      <guid>worldwire-cleanup</guid>
+      <pubDate>Sat, 10 Oct 2026 18:00:00 GMT</pubDate>
+      <description>Volunteers removed 40 tonnes of plastic in one day.</description>
+    </item>
+  </channel>
+</rss>

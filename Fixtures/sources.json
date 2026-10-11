@@ -1,0 +1,26 @@
+[
+  {
+    "title": "TechPulse",
+    "fileName": "techpulse.xml",
+    "url": "https://fixtures.local/techpulse.xml",
+    "dailyLimit": 5,
+    "sampleSize": 3,
+    "qualityScore": 0.9
+  },
+  {
+    "title": "WorldWire",
+    "fileName": "worldwire.xml",
+    "url": "https://fixtures.local/worldwire.xml",
+    "dailyLimit": 4,
+    "sampleSize": 3,
+    "qualityScore": 0.6
+  },
+  {
+    "title": "DesignDaily",
+    "fileName": "designdaily.xml",
+    "url": "https://fixtures.local/designdaily.xml",
+    "dailyLimit": 4,
+    "sampleSize": 2,
+    "qualityScore": 0.8
+  }
+]

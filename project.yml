@@ -1,0 +1,60 @@
+# XcodeGen 工程描述文件 —— Milla.xcodeproj 的唯一事实来源。
+# 双机协作时只提交本文件，生成的 Milla.xcodeproj 不进 Git（避免 macOS/Windows 冲突）。
+# 在 Mac 上执行 `xcodegen generate` 即可生成工程：https://github.com/yonbergman/xcodegen
+
+name: Milla
+
+options:
+  createIntermediateGroups: true
+  developmentLanguage: zh-Hans
+  deploymentTarget:
+    iOS: "18.0"
+
+packages:
+  MillaCore:
+    path: Packages/MillaCore
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+targets:
+  Milla:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: Milla
+        excludes:
+          - "Resources/Info.plist"
+    resources: []
+    info:
+      path: Milla/Resources/Info.plist
+      properties:
+        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleDisplayName: Milla
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    dependencies:
+      - package: MillaCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.milla.feed
+        PRODUCT_NAME: Milla
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
