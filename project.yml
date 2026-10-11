@@ -58,3 +58,27 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+
+  MillaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: MillaUITests
+    dependencies:
+      - target: Milla
+    settings:
+      base:
+        PRODUCT_NAME: MillaUITests
+        PRODUCT_BUNDLE_IDENTIFIER: com.florian.millafeed.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Milla:
+    build:
+      targets:
+        Milla: all
+        MillaUITests: [test]
+    test:
+      targets:
+        - MillaUITests

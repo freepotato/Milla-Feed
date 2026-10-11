@@ -31,10 +31,12 @@ struct ArticleView: View {
                     AsyncImage(url: imageURL) { phase in
                         switch phase {
                         case .success(let image):
-                            // 限高裁切，避免超高竖图占满整屏
-                            image.resizable()
-                                .aspectRatio(contentMode: .fill)
+                            // 限高裁切，避免超高竖图占满整屏；
+                            // 注意 scaledToFill 必须放在 overlay 里：直接 .fill + frame
+                            // 会让图片视图按自身比例向外扩张，横向撑爆外层 ScrollView
+                            Color.clear
                                 .frame(maxWidth: .infinity, maxHeight: 220)
+                                .overlay { image.resizable().scaledToFill() }
                                 .clipped()
                         default:
                             RoundedRectangle(cornerRadius: 12)

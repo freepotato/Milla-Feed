@@ -21,12 +21,30 @@ struct HTMLTextView: UIViewRepresentable {
         textView.backgroundColor = .clear
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
+        textView.textContainer.widthTracksTextView = true
         textView.adjustsFontForContentSizeCategory = true
         textView.dataDetectorTypes = [.link]
         textView.linkTextAttributes = [
             .foregroundColor: UIColor(red: 0.35, green: 0.31, blue: 0.87, alpha: 1)
         ]
         return textView
+    }
+
+    /// 关键：永远不要向 SwiftUI 申报超过给定提议的宽度。
+    /// 默认实现会直接采用 UITextView 的 intrinsicContentSize——在 HTML 属性串
+    /// 设置完成前，其宽度是「未换行的整行宽度」（可达数千 pt），会把外层
+    /// ScrollView/VStack 横向撑爆，导致整页内容被推出可视区域。
+    /// 这里用确定宽度向 UIKit 量取换行后的高度。
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: UITextView,
+        context: Context
+    ) -> CGSize? {
+        guard let width = proposal.width, width > 0 else { return nil }
+        let measured = uiView.sizeThatFits(
+            CGSize(width: width, height: .greatestFiniteMagnitude)
+        )
+        return CGSize(width: width, height: measured.height)
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
