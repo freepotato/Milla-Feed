@@ -48,7 +48,8 @@ final class SwiftFeedParserTests: XCTestCase {
         XCTAssertEqual(item.author, "Jane Doe")
         XCTAssertEqual(item.imageURL?.absoluteString, "https://example.com/cover.jpg")
         XCTAssertEqual(item.summary, "Short summary text.")
-        XCTAssertTrue(item.contentHTML.contains("Full body & details here."))
+        // CDATA 内容按 XML 语义原样保留，实体留给 HTML 渲染层解码
+        XCTAssertTrue(item.contentHTML.contains("Full body &amp; details here."))
         XCTAssertNotNil(item.publishedAt)
         XCTAssertEqual(
             item.id,

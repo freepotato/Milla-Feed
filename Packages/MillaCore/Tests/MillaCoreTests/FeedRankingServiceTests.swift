@@ -160,7 +160,7 @@ final class FeedRankingServiceTests: XCTestCase {
             calendar: calendar
         )
         XCTAssertEqual(outcome.ranked.first?.sourceID, high.id)
-        XCTAssertEqual(outcome.ranked.first?.score, 1.0, accuracy: 0.0001)
+        XCTAssertEqual(outcome.ranked.first?.score ?? -1, 1.0, accuracy: 0.0001)
     }
 
     func testWeightsAreNormalized() {

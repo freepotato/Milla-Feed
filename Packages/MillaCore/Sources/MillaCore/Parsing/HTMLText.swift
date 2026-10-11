@@ -32,17 +32,16 @@ public enum HTMLText {
                 }
                 let rawTag = String(String.UnicodeScalarView(scalars[tagStart..<index]))
                     .lowercased()
+                let isClosing = rawTag.hasPrefix("</")
                 let name = rawTag
-                    .dropFirst()
-                    .split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "/" || $0 == "\n" })
+                    .dropFirst(isClosing ? 2 : 1)
+                    .split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "/" || $0 == "\n" || $0 == ">" })
                     .first
                     .map(String.init) ?? ""
 
                 if name == "script" || name == "style" {
-                    isSkipping = true
-                } else if name == "/script" || name == "/style" {
-                    isSkipping = false
-                } else if name == "br" || name == "p" || name == "div" || name == "li" {
+                    isSkipping = !isClosing
+                } else if !isClosing, name == "br" || name == "p" || name == "div" || name == "li" {
                     result += "\n"
                 }
                 continue
