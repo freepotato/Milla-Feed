@@ -288,7 +288,8 @@ swift run milla-cli --quality 0.8 --recency 0.2 --json
    > 下载 `xcodegen.zip`，解压后将 `xcodegen/bin/xcodegen` 放入 `PATH`（如
    > `/opt/homebrew/bin`）即可；国内网络可经 gh-proxy 镜像加速下载。
 3. 打开工程：`open Milla.xcodeproj`，在 target *Milla → Signing & Capabilities* 选择你的
-   Development Team，把 Bundle Identifier 改成你的前缀（如 `com.yourname.milla`）。
+   Development Team。Bundle Identifier 已固化为 `com.florian.millafeed`（在 `project.yml`
+   中维护，不要只在 Xcode 里改，重新生成会被覆盖）。
 
 ### 5.2 日常调试
 

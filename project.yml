@@ -48,7 +48,7 @@ targets:
       - package: MillaCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.milla.feed
+        PRODUCT_BUNDLE_IDENTIFIER: com.florian.millafeed
         PRODUCT_NAME: Milla
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_KEY_UILaunchScreen_Generation: NO
