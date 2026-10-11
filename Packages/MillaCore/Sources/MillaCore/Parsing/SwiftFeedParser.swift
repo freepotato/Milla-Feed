@@ -421,14 +421,19 @@ private final class FeedTreeBuilder {
     }
 
     private func resolveLink(fields: [String: String], box: Box) -> URL? {
-        // RSS 2.0：<link>文本</link>
-        if let rssLink = fields["link"], let url = URL(string: rssLink.trimmingCharacters(in: .whitespaces)) {
+        // Atom：优先 rel="alternate"（或无 rel）；atomLinks 只在 Atom 下累积
+        if let alternate = box.atomLinks.first(where: { $0.rel == nil || $0.rel == "alternate" })
+            ?? box.atomLinks.first,
+           let url = URL(string: alternate.href) {
             return url
         }
-        // Atom：优先 rel="alternate"（或无 rel）
-        let alternate = box.atomLinks.first { $0.rel == nil || $0.rel == "alternate" }
-            ?? box.atomLinks.first
-        return alternate.flatMap { URL(string: $0.href) }
+        // RSS 2.0：<link>文本</link>
+        // 注意先判空：部分平台（swift-corelibs-foundation）URL(string: "") 会返回非 nil 的空 URL
+        let text = fields["link"]?.trimmingCharacters(in: .whitespaces) ?? ""
+        if !text.isEmpty, let url = URL(string: text) {
+            return url
+        }
+        return nil
     }
 
     // MARK: Helpers
