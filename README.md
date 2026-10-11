@@ -120,5 +120,5 @@ Android 暂无计划，但核心排序算法是跨平台 Swift 包，理论上�
 - [算法通俗讲解 RANKING-EXPLAINED.md](docs/RANKING-EXPLAINED.md) —— 信息流排序与质量分级原理，以及后续改进方向
 - 核心算法是独立的纯 Swift 包（`Packages/MillaCore`），在 macOS / Windows / Linux 上都能跑测试
 - 版本发布：提交遵循 Conventional Commits（`feat:` → minor，`fix:` → patch），
-  [release-please](https://github.com/googleapis/release-please) 自动维护
-  [CHANGELOG](CHANGELOG.md) 与 [Releases](https://github.com/freepotato/Milla-Feed/releases)
+  [release-please](https://github.com/googleapis/release-please) 自动维护 CHANGELOG，
+  发版记录见 [Releases](https://github.com/freepotato/Milla-Feed/releases)
