@@ -31,13 +31,11 @@ struct ArticleView: View {
                     AsyncImage(url: imageURL) { phase in
                         switch phase {
                         case .success(let image):
-                            // 限高裁切，避免超高竖图占满整屏；
-                            // 注意 scaledToFill 必须放在 overlay 里：直接 .fill + frame
-                            // 会让图片视图按自身比例向外扩张，横向撑爆外层 ScrollView
-                            Color.clear
-                                .frame(maxWidth: .infinity, maxHeight: 220)
-                                .overlay { image.resizable().scaledToFill() }
-                                .clipped()
+                            // 封面按横向宽度自适应完整展示（不裁切不压扁）；
+                            // 超高竖图按 480pt 高度兜底整体缩小
+                            image.resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity, maxHeight: 480)
                         default:
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(AppColors.screenBackground)
@@ -50,7 +48,13 @@ struct ArticleView: View {
                 Divider()
 
                 if hasBody {
-                    HTMLTextView(html: ranked.item.contentHTML)
+                    // 正文与封面同图的 <img> 只保留封面一处，避免同图重复
+                    HTMLTextView(
+                        html: ContentSanitizer.removingImage(
+                            from: ranked.item.contentHTML,
+                            matching: ranked.item.imageURL
+                        )
+                    )
                 } else if !ranked.item.summary.isEmpty {
                     Text(ranked.item.summary)
                         .font(.body)

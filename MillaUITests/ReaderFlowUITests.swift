@@ -55,4 +55,36 @@ final class ReaderFlowUITests: XCTestCase {
         attachment2.lifetime = .keepAlways
         add(attachment2)
     }
+
+    /// 图文条目（NASA APOD）：封面唯一 + 宽度自适应 + 无导航/页脚噪声
+    @MainActor
+    func testOpenNASAArticleShowsCleanReader() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let nasaCard = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'APOD'")
+        ).element(boundBy: 0)
+        XCTAssertTrue(nasaCard.waitForExistence(timeout: 20), "未找到 NASA APOD 卡片")
+        nasaCard.tap()
+
+        XCTAssertTrue(
+            app.navigationBars.buttons["收藏"].waitForExistence(timeout: 5),
+            "未进入详情页"
+        )
+        Thread.sleep(forTimeInterval: 2) // 等封面图加载 + 过渡结束
+
+        let shot = XCUIScreen.main.screenshot()
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "nasa-reader-top"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        app.scrollViews.firstMatch.swipeUp()
+        let shot2 = XCUIScreen.main.screenshot()
+        let attachment2 = XCTAttachment(screenshot: shot2)
+        attachment2.name = "nasa-reader-scrolled"
+        attachment2.lifetime = .keepAlways
+        add(attachment2)
+    }
 }

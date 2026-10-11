@@ -161,14 +161,19 @@ private final class ParserDelegate: NSObject, XMLParserDelegate {
             ?? currentItem["itunes:summary"]
             ?? currentItem["summary"]
             ?? ""
-        let contentHTML = currentItem["content:encoded"] ?? currentItem["content"] ?? ""
+        let rawContent = currentItem["content:encoded"] ?? currentItem["content"] ?? ""
+
+        // 正文净化：去原网页导航/页脚/样板噪声与超链接，与 SwiftFeedParser 行为一致
+        let sanitizedContent = ContentSanitizer.sanitize(rawContent)
+        let sanitizedDescription = ContentSanitizer.sanitize(rawDescription)
+        let contentHTML = sanitizedContent.isEmpty ? sanitizedDescription : sanitizedContent
 
         let imageURL = mediaURL.flatMap(URL.init(string:))
             ?? HTMLText.firstImageURL(in: contentHTML)
-            ?? HTMLText.firstImageURL(in: rawDescription)
 
         let summary = HTMLText.plainText(
-            from: rawDescription.isEmpty ? contentHTML : rawDescription
+            from: sanitizedDescription.isEmpty ? contentHTML : sanitizedDescription,
+            maximumLength: 240
         )
 
         let author = currentItem["dc:creator"]

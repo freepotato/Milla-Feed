@@ -109,22 +109,34 @@ final class FeedRepository {
             uniquingKeysWith: { first, _ in first }
         )
 
-        let existingIDs = Set(
-            allStoredSources()
+        let existingByID = Dictionary(
+            uniqueKeysWithValues: allStoredSources()
                 .flatMap { $0.articles }
-                .map { $0.identifier }
+                .map { ($0.identifier, $0) }
         )
 
-        var insertedCount = 0
-        for item in items where !existingIDs.contains(item.id) {
-            context.insert(StoredFeedArticle(item, source: sourceMap[item.sourceID]))
-            insertedCount += 1
+        var changedCount = 0
+        for item in items {
+            if let stored = existingByID[item.id] {
+                // 已有条目刷新正文字段：解析器升级（如正文净化）后旧数据也要跟上
+                if stored.contentHTML != item.contentHTML
+                    || stored.summary != item.summary
+                    || stored.imageURLString != item.imageURL?.absoluteString {
+                    stored.contentHTML = item.contentHTML
+                    stored.summary = item.summary
+                    stored.imageURLString = item.imageURL?.absoluteString
+                    changedCount += 1
+                }
+            } else {
+                context.insert(StoredFeedArticle(item, source: sourceMap[item.sourceID]))
+                changedCount += 1
+            }
         }
-        if insertedCount > 0 {
+        if changedCount > 0 {
             try? context.save()
             pruneOldArticles()
         }
-        return insertedCount
+        return changedCount
     }
 
     /// 最近的文章（用于排序输入），跨源按发布时间倒序，限量拉取。

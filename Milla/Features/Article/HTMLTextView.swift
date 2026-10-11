@@ -6,9 +6,11 @@ import MillaCore
 /// 使用系统原生控件，不引入任何第三方渲染库；滚动由外层 SwiftUI ScrollView 承担。
 ///
 /// 排版策略：
-/// - 用一段阅读器 CSS 约束布局（图片 max-width、行高、引用/代码块样式），
-///   保留 h1/h2/strong 等语义层级，不再统一覆盖字体；
-/// - 解析器写死的文字颜色统一替换为动态 label 色，深浅色模式均可读。
+/// - 用一段阅读器 CSS 约束布局（行高、引用/代码块样式），保留 h1/h2/strong 等语义层级；
+/// - 解析器写死的文字颜色统一替换为动态 label 色，深浅色模式均可读；
+/// - 正文不含任何可点超链接（净化器已剥离 <a>，此处再关闭数据检测并移除 .link 属性）；
+/// - 内嵌图片宽度不超过版心（NSAttributedString 的 HTML 导入不认 CSS max-width，
+///   需要手动缩放 NSTextAttachment 的 bounds）。
 struct HTMLTextView: UIViewRepresentable {
 
     let html: String
@@ -23,10 +25,7 @@ struct HTMLTextView: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.textContainer.widthTracksTextView = true
         textView.adjustsFontForContentSizeCategory = true
-        textView.dataDetectorTypes = [.link]
-        textView.linkTextAttributes = [
-            .foregroundColor: UIColor(red: 0.35, green: 0.31, blue: 0.87, alpha: 1)
-        ]
+        textView.dataDetectorTypes = [] // 正文不可点链接
         return textView
     }
 
@@ -40,7 +39,9 @@ struct HTMLTextView: UIViewRepresentable {
         uiView: UITextView,
         context: Context
     ) -> CGSize? {
-        guard let width = proposal.width, width > 0 else { return nil }
+        let width = proposal.width ?? uiView.superview?.bounds.width ?? 0
+        guard width > 1 else { return nil }
+        Self.capAttachmentWidths(in: uiView, maxWidth: width)
         let measured = uiView.sizeThatFits(
             CGSize(width: width, height: .greatestFiniteMagnitude)
         )
@@ -64,9 +65,13 @@ struct HTMLTextView: UIViewRepresentable {
             options: options,
             documentAttributes: nil
         ) {
-            // HTML 解析器会给文字写死颜色（深色模式下黑底黑字），
-            // 统一替换为动态 label 色；链接颜色交给 linkTextAttributes。
             let fullRange = NSRange(location: 0, length: attributed.length)
+            // 剥离全部超链接属性（净化器已去 <a>，此处兜底处理内联 URL 等）
+            attributed.enumerateAttribute(.link, in: fullRange) { _, range, _ in
+                attributed.removeAttribute(.link, range: range)
+            }
+            // HTML 解析器会给文字写死颜色（深色模式下黑底黑字），
+            // 统一替换为动态 label 色。
             attributed.enumerateAttribute(.foregroundColor, in: fullRange) { value, range, _ in
                 guard value != nil else { return }
                 attributed.addAttribute(.foregroundColor, value: UIColor.label, range: range)
@@ -78,13 +83,36 @@ struct HTMLTextView: UIViewRepresentable {
         }
     }
 
-    /// 阅读器排版模板：约束图片宽度、统一行高与块级元素样式。
+    /// 把超过版心宽度的图片附件等比缩小。
+    private static func capAttachmentWidths(in textView: UITextView, maxWidth: CGFloat) {
+        guard let attributed = textView.attributedText, attributed.length > 0 else { return }
+        let fullRange = NSRange(location: 0, length: attributed.length)
+        attributed.enumerateAttribute(.attachment, in: fullRange) { value, _, _ in
+            guard let attachment = value as? NSTextAttachment else { return }
+            var width = attachment.bounds.width
+            var height = attachment.bounds.height
+            if width <= 0, let image = attachment.image {
+                width = image.size.width
+                height = image.size.height
+            }
+            guard width > maxWidth, width > 0 else { return }
+            let scale = maxWidth / width
+            attachment.bounds = CGRect(
+                x: 0, y: 0,
+                width: width * scale,
+                height: height * scale
+            )
+        }
+    }
+
+    /// 阅读器排版模板：统一行高与块级元素样式。
     private static func readerDocument(_ body: String) -> String {
         """
         <html><head><meta charset="utf-8"><style>
         body { font-family: -apple-system; font-size: 17px; line-height: 1.65;
                margin: 0; padding: 0; word-wrap: break-word; }
         img, video { max-width: 100%; height: auto; border-radius: 10px; }
+        a { color: inherit; text-decoration: none; }
         h1 { font-size: 24px; } h2 { font-size: 21px; } h3 { font-size: 18px; }
         h1, h2, h3, h4 { line-height: 1.3; margin: 18px 0 8px; }
         p { margin: 0 0 12px; }
