@@ -10,26 +10,22 @@
   <rect width="1024" height="1024" fill="url(#bg)"/>
 
   <!-- 报纸 -->
-  <rect x="248" y="200" width="528" height="624" rx="36" fill="#FFFFFF"/>
+  <rect x="252" y="248" width="520" height="528" rx="36" fill="#FFFFFF"/>
 
   <!-- 顶部刊头横线 -->
-  <rect x="312" y="272" width="400" height="22" rx="11" fill="#C2BDEF"/>
-  <rect x="312" y="316" width="262" height="22" rx="11" fill="#D8D4F4"/>
+  <rect x="316" y="320" width="392" height="22" rx="11" fill="#C2BDEF"/>
+  <rect x="316" y="364" width="244" height="22" rx="11" fill="#D8D4F4"/>
 
-  <!-- M 两侧的短横线（表示文字环绕） -->
-  <rect x="312" y="438" width="92" height="20" rx="10" fill="#D8D4F4"/>
-  <rect x="312" y="486" width="92" height="20" rx="10" fill="#E7E4F9"/>
-  <rect x="620" y="438" width="92" height="20" rx="10" fill="#D8D4F4"/>
-  <rect x="620" y="486" width="92" height="20" rx="10" fill="#E7E4F9"/>
+  <!-- M 两侧环绕的文字行（左右各三行，与 M 垂直居中对齐） -->
+  <rect x="316" y="476" width="84" height="20" rx="10" fill="#D8D4F4"/>
+  <rect x="316" y="524" width="84" height="20" rx="10" fill="#E7E4F9"/>
+  <rect x="316" y="572" width="84" height="20" rx="10" fill="#D8D4F4"/>
+  <rect x="624" y="476" width="84" height="20" rx="10" fill="#D8D4F4"/>
+  <rect x="624" y="524" width="84" height="20" rx="10" fill="#E7E4F9"/>
+  <rect x="624" y="572" width="84" height="20" rx="10" fill="#D8D4F4"/>
 
-  <!-- 居中的 M -->
-  <path d="M428 588 L428 380 L512 492 L596 380 L596 588"
+  <!-- 居中的 M（下方留白，不再有任何横线） -->
+  <path d="M428 624 L428 444 L512 548 L596 444 L596 624"
         fill="none" stroke="#5949DB" stroke-width="46"
         stroke-linecap="round" stroke-linejoin="round"/>
-
-  <!-- 底部正文横线 -->
-  <rect x="312" y="636" width="400" height="22" rx="11" fill="#C2BDEF"/>
-  <rect x="312" y="680" width="400" height="22" rx="11" fill="#D8D4F4"/>
-  <rect x="312" y="724" width="400" height="22" rx="11" fill="#D8D4F4"/>
-  <rect x="312" y="768" width="250" height="22" rx="11" fill="#E7E4F9"/>
 </svg>
