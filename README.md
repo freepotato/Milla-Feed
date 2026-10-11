@@ -347,8 +347,10 @@ powershell -ExecutionPolicy Bypass -File Scripts\verify-core.ps1
 - 任何 SwiftUI 视图、SwiftData 持久化、`XMLParser` 桥接、真机行为 —— 提交后由
   Mac 的 Xcode Preview / 模拟器 / 真机，以及 GitHub Actions 的 macOS 任务兜底。
 
-> 本项目当前无法在本机运行 `swift test`（机器仅有 Command Line Tools，XCTest 随 Xcode.app 分发）；
-> `milla-cli verify` 已在此环境实跑通过（20/20），XCTest 在 CI 与装完整 Xcode 的 Mac 上运行。
+> `milla-cli verify`（20/20）与 `swift test`（16/16）均已在 macOS 27 + Xcode 27 实跑通过。
+> 提示：若项目放在 iCloud 同步的 `~/Documents` 下，`swift test` 的 codesign 可能报
+> “resource fork … not allowed”，用 `swift test --scratch-path ~/.cache/millacore-build`
+> 把构建目录移出同步目录即可。
 
 ---
 
