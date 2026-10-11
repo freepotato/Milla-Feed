@@ -26,6 +26,7 @@ public enum ContentSanitizer {
         out = removeJunkClassedElements(out)
         out = removeUnwantedElements(out)
         out = unwrapAnchors(out)
+        out = dedupeRepeatedIntro(out)
         out = trimLeadingJunk(out)
         out = trimTrailingJunk(out)
         out = collapseEmptyBlocks(out)
@@ -100,6 +101,126 @@ public enum ContentSanitizer {
     /// 删除全部 <a> 标签，仅保留链接文字。
     private static func unwrapAnchors(_ html: String) -> String {
         mapMatches(html, pattern: "(?i)</?a\\b[^>]*>") { _, _ in .text("") }
+    }
+
+    /// 重复导入语去除：部分源（如虎嗅）正文开头先放一段"编者导入语"，
+    /// 隔一行作者/来源后，正文又以完全相同的文字开篇。
+    ///
+    /// 检测规则（保守，避免误删）：
+    /// 1. 跳过开头的封面/媒体块，取其后的内容：
+    ///    - 形态 A（虎嗅）：导入语是没有标签包裹的裸文本，结束于下一个块级标签；
+    ///    - 形态 B：导入语是 1~2 个连续文本块（p/div/blockquote/h）；
+    /// 2. 候选可见文本 ≥30 字且 ≤600 字；
+    /// 3. 候选之后的剩余正文若包含导入语前 30 字，判定为重复，删除候选
+    ///   （来源行不在候选内，保留）。
+    private static func dedupeRepeatedIntro(_ html: String) -> String {
+        guard let blockRegex = try? NSRegularExpression(
+            pattern: "(?is)<(p|div|blockquote|h[1-6]|ul|ol|pre|table|section)\\b[^>]*>.*?</\\1>"
+        ) else { return html }
+        let ns = html as NSString
+
+        // 1. 跳过开头的媒体块（figure / img）与空白，确定正文起点
+        var pos = html.startIndex
+        let mediaRegex = try? NSRegularExpression(
+            pattern: "(?is)^\\s*(?:<figure\\b.*?</figure>|<img\\b[^>]*>|<!--.*?-->)+\\s*"
+        )
+        if let m = mediaRegex?.firstMatch(
+            in: html, range: NSRange(location: 0, length: ns.length)
+        ), let r = Range(m.range, in: html) {
+            pos = r.upperBound
+        }
+
+        // 2a. 形态 A：起点到下一个块级标签之间的裸文本
+        if let nextBlock = html.range(
+            of: "(?is)<(p|div|blockquote|h[1-6]|ul|ol|pre|table|section|figure)\\b",
+            options: .regularExpression,
+            range: pos..<html.endIndex
+        ) {
+            let segment = html[pos..<nextBlock.lowerBound]
+            if let removed = removeIfRepeated(
+                String(segment),
+                candidateRanges: [pos..<nextBlock.lowerBound],
+                in: html
+            ) {
+                return removed
+            }
+        }
+
+        // 2b. 形态 B：前 1~2 个连续文本块
+        let blockRanges = blockRegex.matches(
+            in: html, range: NSRange(location: 0, length: ns.length)
+        ).compactMap { Range($0.range, in: html) }
+        guard blockRanges.count >= 2 else { return html }
+
+        var startPos: Int?
+        var skipped = 0
+        for (index, range) in blockRanges.enumerated() {
+            let block = String(html[range])
+            if block.range(of: "<img", options: .caseInsensitive) != nil
+                || normalizeWhitespace(
+                    HTMLText.plainText(from: block, maximumLength: 2_000)
+                ).count < 20 {
+                skipped += 1
+                if skipped > 3 { break }
+                continue
+            }
+            startPos = index
+            break
+        }
+        guard let startPos else { return html }
+
+        for blockCount in 1...2 {
+            let endPos = startPos + blockCount
+            guard endPos <= blockRanges.count else { return html }
+            let ranges = Array(blockRanges[startPos..<endPos])
+            if let removed = removeIfRepeated(
+                ranges.map { String(html[$0]) }.joined(),
+                candidateRanges: ranges,
+                in: html
+            ) {
+                return removed
+            }
+        }
+        return html
+    }
+
+    /// 候选文本在其后的正文中重复时，删除给定范围，返回净化结果；否则 nil。
+    /// 比较时移除全部空白：部分源（虎嗅）会把重复段拆进多个 `<p>`，
+    /// plainText 跨块会插入空白，导致带空白的前缀匹配失败。
+    private static func removeIfRepeated(
+        _ candidateText: String,
+        candidateRanges: [Range<String.Index>],
+        in html: String
+    ) -> String? {
+        let intro = normalizeWhitespace(
+            HTMLText.plainText(from: candidateText, maximumLength: 4_000)
+        )
+        guard intro.count >= 30, intro.count <= 600,
+              let last = candidateRanges.last else { return nil }
+        let prefixSquashed = squashWhitespace(String(intro.prefix(30)))
+        let remainderSquashed = squashWhitespace(
+            HTMLText.plainText(from: String(html[last.upperBound...]), maximumLength: 200_000)
+        )
+        guard remainderSquashed.contains(prefixSquashed) else { return nil }
+
+        var out = html
+        for range in candidateRanges.reversed() {
+            out.removeSubrange(range)
+        }
+        return out
+    }
+
+    /// 移除全部空白（跨段落重复匹配用）。
+    private static func squashWhitespace(_ text: String) -> String {
+        String(text.unicodeScalars.filter {
+            !CharacterSet.whitespacesAndNewlines.contains($0)
+        })
+    }
+
+    private static func normalizeWhitespace(_ text: String) -> String {
+        text.components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     /// 开头修剪：第一个"实质内容块"（p/figure/img/h/blockquote/list/pre/table）之前
