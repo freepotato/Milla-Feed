@@ -33,6 +33,11 @@ final class AppSettings {
         didSet { defaults.set(defaultQualityScore, forKey: Keys.defaultQualityScore) }
     }
 
+    // MARK: 外观
+    var appearanceMode: AppearanceMode {
+        didSet { defaults.set(appearanceMode.rawValue, forKey: Keys.appearanceMode) }
+    }
+
     // MARK: 其他
     var refreshOnLaunch: Bool {
         didSet { defaults.set(refreshOnLaunch, forKey: Keys.refreshOnLaunch) }
@@ -49,6 +54,9 @@ final class AppSettings {
         self.defaultDailyLimit = defaults.object(forKey: Keys.defaultDailyLimit) as? Int ?? 10
         self.defaultSampleSize = defaults.object(forKey: Keys.defaultSampleSize) as? Int ?? 5
         self.defaultQualityScore = defaults.object(forKey: Keys.defaultQualityScore) as? Double ?? 0.8
+        self.appearanceMode = AppearanceMode(
+            rawValue: defaults.string(forKey: Keys.appearanceMode) ?? ""
+        ) ?? .system
         self.refreshOnLaunch = defaults.object(forKey: Keys.refreshOnLaunch) as? Bool ?? true
     }
 
@@ -69,6 +77,33 @@ final class AppSettings {
         static let defaultDailyLimit = "feeds.defaultDailyLimit"
         static let defaultSampleSize = "feeds.defaultSampleSize"
         static let defaultQualityScore = "feeds.defaultQualityScore"
+        static let appearanceMode = "appearance.mode"
         static let refreshOnLaunch = "feeds.refreshOnLaunch"
+    }
+}
+
+/// 界面外观模式：跟随系统 / 浅色 / 深色。
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .light: return "浅色"
+        case .dark: return "深色"
+        }
+    }
+
+    /// 传给 .preferredColorScheme 的值；跟随系统时为 nil。
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
     }
 }

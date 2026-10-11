@@ -15,6 +15,7 @@ struct SettingsView: View {
         @Bindable var settings = settings
 
         Form {
+            appearanceSection
             rankingSection(settings: _settings)
             defaultValuesSection(settings: _settings)
             sourcesSection
@@ -48,6 +49,20 @@ struct SettingsView: View {
     }
 
     // MARK: Sections
+
+    private var appearanceSection: some View {
+        Section("外观") {
+            Picker("界面外观", selection: Binding(
+                get: { settings.appearanceMode },
+                set: { settings.appearanceMode = $0 }
+            )) {
+                ForEach(AppearanceMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
 
     @ViewBuilder
     private func rankingSection(settings: Bindable<AppSettings>) -> some View {

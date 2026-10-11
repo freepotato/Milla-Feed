@@ -32,6 +32,7 @@ struct MillaApp: App {
                 .environment(settings)
                 .environment(repository)
                 .environment(router)
+                .preferredColorScheme(settings.appearanceMode.colorScheme)
         }
     }
 }
