@@ -15,8 +15,8 @@ struct SettingsView: View {
         @Bindable var settings = settings
 
         Form {
-            rankingSection(settings: settings)
-            defaultValuesSection(settings: settings)
+            rankingSection(settings: _settings)
+            defaultValuesSection(settings: _settings)
             sourcesSection
             aboutSection
         }
@@ -300,7 +300,7 @@ private struct FeedSourceEditView: View {
 
             Section {
                 Button(role: .destructive) {
-                    repository.delete(source)
+                    repository.deleteSource(source)
                     onDeleted()
                     dismiss()
                 } label: {

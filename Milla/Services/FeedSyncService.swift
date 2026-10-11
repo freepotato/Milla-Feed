@@ -1,7 +1,7 @@
 import Foundation
 import MillaCore
 
-struct SyncReport: Equatable {
+struct SyncReport {
     var successCount: Int = 0
     var insertedCount: Int = 0
     var failures: [(title: String, message: String)] = []
@@ -18,7 +18,8 @@ final class FeedSyncService {
     private let primaryParser: FeedParsing
     private let fallbackParser: FeedParsing
 
-    init(
+    // nonisolated：仅赋值存储属性，允许在任意上下文构造（如 ViewModel 的默认参数）
+    nonisolated init(
         session: URLSession = {
             let configuration = URLSessionConfiguration.ephemeral
             configuration.timeoutIntervalForRequest = 20
@@ -64,7 +65,7 @@ final class FeedSyncService {
                         return .success(title: coreSource.title,
                                         sourceID: coreSource.id,
                                         items: parsed.items)
-                    } catch let cancellation as CancellationError {
+                    } catch is CancellationError {
                         return .failure(title: coreSource.title, message: "已取消")
                     } catch {
                         return .failure(title: coreSource.title,
