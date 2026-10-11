@@ -56,17 +56,18 @@ final class ReaderFlowUITests: XCTestCase {
         add(attachment2)
     }
 
-    /// 图文条目（NASA APOD）：封面唯一 + 宽度自适应 + 无导航/页脚噪声
+    /// 第二篇图文条目（源无关）：封面唯一 + 宽度自适应 + 正文渲染
     @MainActor
-    func testOpenNASAArticleShowsCleanReader() throws {
+    func testOpenSecondArticleShowsReader() throws {
         let app = XCUIApplication()
         app.launch()
 
-        let nasaCard = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'APOD'")
-        ).element(boundBy: 0)
-        XCTAssertTrue(nasaCard.waitForExistence(timeout: 20), "未找到 NASA APOD 卡片")
-        nasaCard.tap()
+        let cards = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] '前'")
+        )
+        let secondCard = cards.element(boundBy: 1)
+        XCTAssertTrue(secondCard.waitForExistence(timeout: 20), "未找到第二篇卡片")
+        secondCard.tap()
 
         XCTAssertTrue(
             app.navigationBars.buttons["收藏"].waitForExistence(timeout: 5),
@@ -76,14 +77,14 @@ final class ReaderFlowUITests: XCTestCase {
 
         let shot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: shot)
-        attachment.name = "nasa-reader-top"
+        attachment.name = "second-reader-top"
         attachment.lifetime = .keepAlways
         add(attachment)
 
         app.scrollViews.firstMatch.swipeUp()
         let shot2 = XCUIScreen.main.screenshot()
         let attachment2 = XCTAttachment(screenshot: shot2)
-        attachment2.name = "nasa-reader-scrolled"
+        attachment2.name = "second-reader-scrolled"
         attachment2.lifetime = .keepAlways
         add(attachment2)
     }
