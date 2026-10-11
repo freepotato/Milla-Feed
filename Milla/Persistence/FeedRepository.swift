@@ -9,7 +9,6 @@ import MillaCore
 final class FeedRepository {
 
     let container: ModelContainer
-    private let maxArticlesPerSource = 100
 
     init(container: ModelContainer) {
         self.container = container
@@ -134,7 +133,6 @@ final class FeedRepository {
         }
         if changedCount > 0 {
             try? context.save()
-            pruneOldArticles()
         }
         return changedCount
     }
@@ -166,7 +164,7 @@ final class FeedRepository {
         let favoriteIDs: Set<String>
     }
 
-    func loadHomeData(limit: Int = 300) -> HomeData {
+    func loadHomeData(limit: Int = 2000) -> HomeData {
         var descriptor = FetchDescriptor<StoredFeedArticle>(
             sortBy: [SortDescriptor(\.publishedAt, order: .reverse)]
         )
@@ -219,26 +217,30 @@ final class FeedRepository {
         return try? context.fetch(descriptor).first
     }
 
-    // MARK: - Maintenance
+    // MARK: - 首页顺序
 
-    /// 每个订阅源仅保留最新的 maxArticlesPerSource 条，控制本地存储体积。
-    private func pruneOldArticles() {
-        for source in allStoredSources() {
-            let sorted = source.articles.sorted {
-                switch ($0.publishedAt, $1.publishedAt) {
-                case let (l?, r?): return l > r
-                case (.some, .none): return true
-                case (.none, .some): return false
-                default: return $0.storedAt > $1.storedAt
-                }
-            }
-            if sorted.count > maxArticlesPerSource {
-                for article in sorted.dropFirst(maxArticlesPerSource) {
-                    context.delete(article)
-                }
-            }
-        }
-        try? context.save()
+    /// 首页信息流的稳定顺序（新批次在前、旧内容原样保留）。
+    /// 排序只作用于"新增批次"，顺序一经确定不再被权重/抽样重排。
+    private static let orderedIdentifiersKey = "home.orderedIdentifiers.v1"
+
+    /// 已纳入过批次的文章池：用于区分"真正新抓取的文章"与
+    /// "首批抽样未中但早已存在的文章"——后者不会在以后刷新时冒充新内容。
+    private static let seenIdentifiersKey = "home.seenIdentifiers.v1"
+
+    func loadOrderedIdentifiers() -> [String] {
+        UserDefaults.standard.stringArray(forKey: Self.orderedIdentifiersKey) ?? []
+    }
+
+    func saveOrderedIdentifiers(_ identifiers: [String]) {
+        UserDefaults.standard.set(identifiers, forKey: Self.orderedIdentifiersKey)
+    }
+
+    func loadSeenIdentifiers() -> Set<String> {
+        Set(UserDefaults.standard.stringArray(forKey: Self.seenIdentifiersKey) ?? [])
+    }
+
+    func saveSeenIdentifiers(_ identifiers: Set<String>) {
+        UserDefaults.standard.set(Array(identifiers), forKey: Self.seenIdentifiersKey)
     }
 }
 

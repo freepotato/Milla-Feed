@@ -55,10 +55,10 @@
 | 层 | 类型 | 技术 | 职责 |
 |---|---|---|---|
 | View | `HomeView` / `SettingsView` / `ArticleView` / `FeedCardView` | SwiftUI 原生组件 | 只做展示与事件绑定 |
-| ViewModel | `HomeViewModel` 等 | `@Observable` | 编排：拉取 → 取快照 → 调 MillaCore 排序 → 写去重池 |
-| Service | `FeedSyncService` | URLSession async/await | 并发拉取、逐源容错、解析器回退 |
-| Parser | `XMLParserFeedParser` / `SwiftFeedParser` | XMLParser / 自研分词器 | RSS 2.0 + Atom 解析 |
-| Repository | `FeedRepository` | SwiftData | 订阅源、文章、已读、收藏、去重池持久化 |
+| ViewModel | `HomeViewModel` 等 | `@Observable` | 编排：拉取 → 取快照 → 仅对新增批次调 MillaCore 排序 → 置顶追加 |
+| Service | `FeedSyncService` | URLSession async/await | 并发拉取、逐源容错、解析器回退（含正文净化） |
+| Parser | `XMLParserFeedParser` / `SwiftFeedParser` / `ContentSanitizer` | XMLParser / 自研分词器 / 规则净化 | RSS 2.0 + Atom 解析、导航页脚噪声与重复导入语清理 |
+| Repository | `FeedRepository` | SwiftData + UserDefaults | 订阅源、文章、已读、收藏、信息流顺序与已见池持久化 |
 | Settings | `AppSettings` | UserDefaults | 权重、半衰期、默认抽样参数 |
 | Core | `FeedRankingService` 等 | 纯 Foundation | **无任何 iOS 依赖**，Windows 可测 |
 
@@ -123,11 +123,17 @@ rank(sources, items, shownIDs, config, now):
     return RankingOutcome(result, excludedAsShown)
 ```
 
-去重池行为（产品取舍）：
+首页顺序规则（产品取舍，App 层在算法之上的编排）：
 
-1. 条目在首页展示后立即 `shown = true`，下次刷新若有新内容，旧内容自动退场；
-2. 若新一轮没有任何新内容，则**临时忽略去重池**继续展示旧内容，信息流永不为空；
-3. 已读/收藏独立于去重池，收藏内容不会因去重而丢失入口（后续“收藏列表”直接读 SwiftData）。
+1. **文章只增不换**：下拉刷新不会重排或移除旧文章，已读文章同样保留在信息流中；
+2. **排序只作用于新增批次**：质量/时效权重与抽样仅对"本次新抓取的文章"生效，
+   新批次按排序结果整体置顶，旧文章顺序永久保持（顺序持久化在 UserDefaults，
+   重启 App 不变）；
+3. "已见池"独立于展示顺序：首批抽样未中的文章记入已见池，以后不会冒充新内容；
+4. 已读/收藏独立维护，收藏内容不会丢失入口（后续"收藏列表"直接读 SwiftData）。
+
+> 上面伪代码中的 `shownIDs` 是算法层保留的可选去重参数；当前 App 编排对每个
+> 新增批次传入空集，去重与顺序语义由 App 层的"顺序表 + 已见池"承担。
 
 交替合并保证：**只要 ≥2 个源还有候选，相邻两条不可能来自同一源**；同时在交替约束内始终优先综合分最高的条目。
 
@@ -223,11 +229,13 @@ Milla-Feed/
 ### 4.3 iOS 端编排
 
 - [HomeViewModel.swift](file:///Users/florian/Documents/Milla-Feed/Milla/Features/Home/HomeViewModel.swift)
-  — 调 `FeedRankingService.rank`，空池兜底，回写去重池。
+  — 首批全量排序一次；之后仅对"已见池"之外的新文章排序，新批次置顶、旧顺序不动。
 - [FeedSyncService.swift](file:///Users/florian/Documents/Milla-Feed/Milla/Services/FeedSyncService.swift)
   — `withTaskGroup` 并发、逐源隔离错误、双解析器回退。
 - [FeedRepository.swift](file:///Users/florian/Documents/Milla-Feed/Milla/Persistence/FeedRepository.swift)
-  — SwiftData 增删改查、去重池/已读/收藏、每源 100 条存储上限。
+  — SwiftData 增删改查、已读/收藏，UserDefaults 持久化信息流顺序与已见池；文章不自动删除。
+- [ContentSanitizer.swift](file:///Users/florian/Documents/Milla-Feed/Packages/MillaCore/Sources/MillaCore/Parsing/ContentSanitizer.swift)
+  — 正文净化：去导航/页脚/样板噪声、剥离超链接、删除与正文重复的开头导入语。
 
 ### 4.4 页面
 
@@ -339,7 +347,7 @@ powershell -ExecutionPolicy Bypass -File Scripts\verify-core.ps1
 | sampleSize 确定性 Top-K 与固定种子随机抽样 | 同上 |
 | quality/recency 打分与权重归一化 | 同上 |
 | 多源交替（相邻不同源不变量） | 单测断言 |
-| 去重池、停用源、旧内容兜底 | 同上 |
+| 正文净化（噪声块/超链接/重复导入语） | `ContentSanitizerTests`（含真实结构用例） |
 | 修改排序参数后的效果 | `--quality/--recency/--half-life/--json` |
 | 数据模型、稳定 ID 行为 | 单测 |
 

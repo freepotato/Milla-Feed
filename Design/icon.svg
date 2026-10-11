@@ -4,51 +4,32 @@
       <stop offset="0" stop-color="#6A5CE6"/>
       <stop offset="1" stop-color="#4E42C8"/>
     </linearGradient>
-    <linearGradient id="photo" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7B6FF0"/>
-      <stop offset="1" stop-color="#5A4EDB"/>
-    </linearGradient>
   </defs>
 
   <!-- 背景（系统会自动裁成圆角松鼠形） -->
   <rect width="1024" height="1024" fill="url(#bg)"/>
 
-  <!-- 后层报纸（错位，轻微透明，制造层次感） -->
-  <rect x="292" y="186" width="470" height="556" rx="30" fill="#FFFFFF" opacity="0.16"/>
+  <!-- 报纸 -->
+  <rect x="248" y="200" width="528" height="624" rx="36" fill="#FFFFFF"/>
 
-  <!-- 前层报纸 -->
-  <rect x="252" y="216" width="500" height="600" rx="32" fill="#FFFFFF"/>
+  <!-- 顶部刊头横线 -->
+  <rect x="312" y="272" width="400" height="22" rx="11" fill="#C2BDEF"/>
+  <rect x="312" y="316" width="262" height="22" rx="11" fill="#D8D4F4"/>
 
-  <!-- 右上折角 -->
-  <path d="M660 216 L772 216 L772 328 Z" fill="#E9E6F8"/>
-  <path d="M660 216 L772 328" fill="none" stroke="#C9C4EE" stroke-width="6" stroke-linecap="round"/>
+  <!-- M 两侧的短横线（表示文字环绕） -->
+  <rect x="312" y="438" width="92" height="20" rx="10" fill="#D8D4F4"/>
+  <rect x="312" y="486" width="92" height="20" rx="10" fill="#E7E4F9"/>
+  <rect x="620" y="438" width="92" height="20" rx="10" fill="#D8D4F4"/>
+  <rect x="620" y="486" width="92" height="20" rx="10" fill="#E7E4F9"/>
 
-  <!-- 刊头条 -->
-  <rect x="300" y="276" width="348" height="64" rx="14" fill="#5949DB"/>
-  <path d="M338 324 L338 292 L364 314 L390 292 L390 324"
-        fill="none" stroke="#FFFFFF" stroke-width="13"
+  <!-- 居中的 M -->
+  <path d="M428 588 L428 380 L512 492 L596 380 L596 588"
+        fill="none" stroke="#5949DB" stroke-width="46"
         stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="424" y="297" width="150" height="11" rx="5.5" fill="#FFFFFF" opacity="0.55"/>
-  <rect x="424" y="314" height="11" width="104" rx="5.5" fill="#FFFFFF" opacity="0.32"/>
 
-  <!-- 正文文字栏 -->
-  <rect x="300" y="392" width="270" height="18" rx="9" fill="#BEB9ED"/>
-  <rect x="300" y="428" width="270" height="18" rx="9" fill="#CCC8F1"/>
-  <rect x="300" y="464" width="270" height="18" rx="9" fill="#CCC8F1"/>
-  <rect x="300" y="500" width="180" height="18" rx="9" fill="#DCD9F6"/>
-
-  <!-- 配图块（呼应信息流卡片） -->
-  <rect x="600" y="384" width="124" height="134" rx="16" fill="url(#photo)"/>
-  <circle cx="638" cy="424" r="15" fill="#FFFFFF"/>
-  <path d="M610 502 L650 456 L690 502 Z" fill="#FFFFFF" opacity="0.92"/>
-  <path d="M658 502 L684 472 L710 502 Z" fill="#FFFFFF" opacity="0.6"/>
-
-  <!-- 下方正文行 -->
-  <rect x="300" y="566" width="424" height="18" rx="9" fill="#CCC8F1"/>
-  <rect x="300" y="602" width="424" height="18" rx="9" fill="#DCD9F6"/>
-  <rect x="300" y="638" width="268" height="18" rx="9" fill="#DCD9F6"/>
-
-  <!-- 底部来源条 -->
-  <rect x="300" y="724" width="132" height="14" rx="7" fill="#E4E1F8"/>
-  <rect x="452" y="724" width="88" height="14" rx="7" fill="#EFEDFB"/>
+  <!-- 底部正文横线 -->
+  <rect x="312" y="636" width="400" height="22" rx="11" fill="#C2BDEF"/>
+  <rect x="312" y="680" width="400" height="22" rx="11" fill="#D8D4F4"/>
+  <rect x="312" y="724" width="400" height="22" rx="11" fill="#D8D4F4"/>
+  <rect x="312" y="768" width="250" height="22" rx="11" fill="#E7E4F9"/>
 </svg>
