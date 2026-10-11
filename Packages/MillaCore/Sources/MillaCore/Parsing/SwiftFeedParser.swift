@@ -381,13 +381,17 @@ private final class FeedTreeBuilder {
         let contentHTML = fields["content:encoded"]
             ?? (fields["content"] ?? "")
 
+        // 正文净化：去原网页导航/页脚/样板噪声与超链接，"直接从正文开始"
+        let sanitizedContent = ContentSanitizer.sanitize(contentHTML)
+        let sanitizedDescription = ContentSanitizer.sanitize(rawDescription)
+
         let imageURL = box.mediaURL
             .flatMap(URL.init(string:))
-            ?? HTMLText.firstImageURL(in: contentHTML)
-            ?? HTMLText.firstImageURL(in: rawDescription)
+            ?? HTMLText.firstImageURL(in: sanitizedContent)
+            ?? HTMLText.firstImageURL(in: sanitizedDescription)
 
         let summary: String = {
-            let base = rawDescription.isNotEmpty ? rawDescription : contentHTML
+            let base = sanitizedDescription.isNotEmpty ? sanitizedDescription : sanitizedContent
             return HTMLText.plainText(from: base, maximumLength: 240)
         }()
 
@@ -413,7 +417,7 @@ private final class FeedTreeBuilder {
             title: title,
             link: link,
             summary: summary,
-            contentHTML: contentHTML,
+            contentHTML: sanitizedContent.isNotEmpty ? sanitizedContent : sanitizedDescription,
             imageURL: imageURL,
             author: author?.trimmingCharacters(in: .whitespacesAndNewlines),
             publishedAt: publishedAt
