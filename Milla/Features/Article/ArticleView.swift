@@ -31,7 +31,11 @@ struct ArticleView: View {
                     AsyncImage(url: imageURL) { phase in
                         switch phase {
                         case .success(let image):
-                            image.resizable().aspectRatio(contentMode: .fit)
+                            // 限高裁切，避免超高竖图占满整屏
+                            image.resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(maxWidth: .infinity, maxHeight: 220)
+                                .clipped()
                         default:
                             RoundedRectangle(cornerRadius: 12)
                                 .fill(AppColors.screenBackground)
