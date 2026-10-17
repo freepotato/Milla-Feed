@@ -304,6 +304,25 @@ private struct FeedSourceEditView: View {
                 Text("质量分越高，该源在综合排序中的竞争力越强。")
             }
 
+            Section {
+                Picker("筛选侧重", selection: Binding(
+                    get: { source.focus },
+                    set: { source.focus = $0; save() }
+                )) {
+                    ForEach(SourceFocus.allCases, id: \.self) { focus in
+                        Text(focus.title).tag(focus)
+                    }
+                }
+                .pickerStyle(.segmented)
+                Text(source.focus.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("筛选侧重")
+            } footer: {
+                Text("时效优先适合新闻快讯类订阅源；深度优先适合长文、思考类订阅源。")
+            }
+
             if let lastFetched = source.lastFetchedAt {
                 Section("状态") {
                     LabeledContent("最近成功更新") {

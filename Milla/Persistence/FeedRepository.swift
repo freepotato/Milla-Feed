@@ -36,6 +36,21 @@ final class FeedRepository {
         try? context.save()
     }
 
+    /// 幂等迁移：已存在的默认源若从未设置过筛选侧重（focusRaw == nil），
+    /// 按最新默认配置补齐。用户手动改过的源（focusRaw 非 nil）不会被覆盖。
+    func migrateDefaultFocusIfNeeded(_ defaults: [FeedSource]) {
+        let defaultByURL = Dictionary(defaults.map { ($0.url.absoluteString, $0.focus) },
+                                      uniquingKeysWith: { first, _ in first })
+        var changed = false
+        for stored in allStoredSources() where stored.focusRaw == nil {
+            if let focus = defaultByURL[stored.urlString] {
+                stored.focusRaw = focus.rawValue
+                changed = true
+            }
+        }
+        if changed { try? context.save() }
+    }
+
     // MARK: - Sources
 
     func allStoredSources() -> [StoredFeedSource] {
@@ -57,7 +72,8 @@ final class FeedRepository {
         urlString: String,
         dailyLimit: Int,
         sampleSize: Int,
-        qualityScore: Double
+        qualityScore: Double,
+        focus: SourceFocus = .balanced
     ) throws -> StoredFeedSource {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)

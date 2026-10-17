@@ -13,6 +13,8 @@ final class StoredFeedSource {
     var dailyLimit: Int
     var sampleSize: Int
     var qualityScore: Double
+    /// 筛选侧重（SourceFocus.rawValue），旧数据缺省视为 balanced。
+    var focusRaw: String?
     var addedAt: Date
     var lastFetchedAt: Date?
 
@@ -27,6 +29,7 @@ final class StoredFeedSource {
         dailyLimit: Int = 10,
         sampleSize: Int = 5,
         qualityScore: Double = 0.8,
+        focus: SourceFocus = .balanced,
         addedAt: Date = Date(),
         lastFetchedAt: Date? = nil
     ) {
@@ -37,6 +40,7 @@ final class StoredFeedSource {
         self.dailyLimit = dailyLimit
         self.sampleSize = sampleSize
         self.qualityScore = qualityScore
+        self.focusRaw = focus.rawValue
         self.addedAt = addedAt
         self.lastFetchedAt = lastFetchedAt
     }
@@ -50,12 +54,19 @@ final class StoredFeedSource {
             dailyLimit: source.dailyLimit,
             sampleSize: source.sampleSize,
             qualityScore: source.qualityScore,
+            focus: source.focus,
             addedAt: source.addedAt,
             lastFetchedAt: source.lastFetchedAt
         )
     }
 
     var url: URL? { URL(string: urlString) }
+
+    /// 筛选侧重；旧数据 focusRaw 为 nil 时按均衡处理。
+    var focus: SourceFocus {
+        get { focusRaw.flatMap(SourceFocus.init(rawValue:)) ?? .balanced }
+        set { focusRaw = newValue.rawValue }
+    }
 
     func makeCoreSource() -> FeedSource {
         FeedSource(
@@ -66,6 +77,7 @@ final class StoredFeedSource {
             dailyLimit: dailyLimit,
             sampleSize: sampleSize,
             qualityScore: qualityScore,
+            focus: focus,
             addedAt: addedAt,
             lastFetchedAt: lastFetchedAt
         )
@@ -78,5 +90,6 @@ final class StoredFeedSource {
         dailyLimit = source.dailyLimit
         sampleSize = source.sampleSize
         qualityScore = source.qualityScore
+        focusRaw = source.focus.rawValue
     }
 }

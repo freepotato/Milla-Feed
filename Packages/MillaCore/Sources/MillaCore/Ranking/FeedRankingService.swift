@@ -100,14 +100,25 @@ public enum FeedRankingService {
                 calendar: calendar
             )
 
+            // 按订阅源侧重调整有效权重与半衰期：
+            // 时效源——新鲜度权重 ×2（半衰期不变：源内 quality 恒定，
+            //   缩短半衰期只会反向压低新文章的 recency，产生悖论）；
+            // 深度源——质量权重 ×2、半衰期 ×4，旧长文保持竞争力。
+            let sourceWeights = effectiveWeights(global: weights, focus: source.focus)
+            let sourceHalfLife = effectiveHalfLife(
+                global: config.recencyHalfLifeHours,
+                focus: source.focus
+            )
+
             let scored: [RankedFeedItem] = candidates.map { item in
                 let recency = recencyScore(
                     publishedAt: item.publishedAt,
                     now: now,
-                    halfLifeHours: config.recencyHalfLifeHours,
+                    halfLifeHours: sourceHalfLife,
                     missingFallback: config.missingDateRecency
                 )
-                let score = weights.quality * source.qualityScore + weights.recency * recency
+                let score = sourceWeights.quality * source.qualityScore
+                    + sourceWeights.recency * recency
                 return RankedFeedItem(
                     item: item,
                     sourceID: source.id,
@@ -148,6 +159,30 @@ public enum FeedRankingService {
             ranked: ranked,
             excludedAsShown: excludedAsShown.sorted()
         )
+    }
+
+    // MARK: - 侧重调整
+
+    /// 按侧重调整有效权重：侧重方向权重 ×2 后再归一化。
+    /// 例：全局 0.6/0.4 下，时效源变为 0.6/0.8 → 0.43/0.57。
+    public static func effectiveWeights(
+        global: (quality: Double, recency: Double),
+        focus: SourceFocus
+    ) -> (quality: Double, recency: Double) {
+        let qualityMultiplier: Double = focus == .depth ? 2 : 1
+        let recencyMultiplier: Double = focus == .timeliness ? 2 : 1
+        let q = global.quality * qualityMultiplier
+        let r = global.recency * recencyMultiplier
+        let total = q + r
+        guard total > 0 else { return (0.5, 0.5) }
+        return (q / total, r / total)
+    }
+
+    /// 按侧重调整半衰期：深度 ×4 让旧长文续命；时效与均衡不变
+    /// （见 rank 内注释，缩短半衰期对时效源是反效果）。下限 1 小时。
+    public static func effectiveHalfLife(global: Double, focus: SourceFocus) -> Double {
+        let multiplier: Double = focus == .depth ? 4 : 1
+        return max(1, global * multiplier)
     }
 
     // MARK: - 当日候选 + dailyLimit

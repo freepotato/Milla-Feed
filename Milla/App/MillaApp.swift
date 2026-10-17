@@ -19,6 +19,7 @@ struct MillaApp: App {
             _settings = State(initialValue: AppSettings())
             let repository = FeedRepository(container: container)
             repository.seedInitialSourcesIfNeeded(DefaultFeeds.sources)
+            repository.migrateDefaultFocusIfNeeded(DefaultFeeds.sources)
             _repository = State(initialValue: repository)
         } catch {
             fatalError("无法初始化 SwiftData：\(error)")
