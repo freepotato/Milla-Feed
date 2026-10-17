@@ -13,10 +13,12 @@ struct HomeView: View {
     @State private var showsDailyNews = false
 
     var body: some View {
-        // 每日新闻模式下不挂下拉刷新（它有自己"当天已抓不再抓"的节奏）
+        // 每日新闻模式下不挂下拉刷新（它有自己"当天已抓不再抓"的节奏）；
+        // 同时从左边缘右滑可直接退回信息流（该页不在导航栈里，系统返回手势够不到）
         Group {
             if showsDailyNews {
                 scrollContent
+                    .simultaneousGesture(backToFeedGesture)
             } else {
                 scrollContent
                     .refreshable {
@@ -71,6 +73,22 @@ struct HomeView: View {
             }
             .padding(.bottom, 24)
         }
+    }
+
+    /// 左边缘右滑退回信息流：要求起点靠近屏幕左缘、横向为主、距离足够，
+    /// 避免与纵向滚动冲突（simultaneousGesture 不拦截滚动）。
+    private var backToFeedGesture: some Gesture {
+        DragGesture(minimumDistance: 20, coordinateSpace: .local)
+            .onEnded { value in
+                let fromLeftEdge = value.startLocation.x < 40
+                let rightward = value.translation.width > 80
+                let horizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
+                if fromLeftEdge && rightward && horizontal {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showsDailyNews = false
+                    }
+                }
+            }
     }
 
     @ViewBuilder
