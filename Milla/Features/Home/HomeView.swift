@@ -83,10 +83,16 @@ struct HomeView: View {
                 let fromLeftEdge = value.startLocation.x < 40
                 let rightward = value.translation.width > 80
                 let horizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                if fromLeftEdge && rightward && horizontal {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showsDailyNews = false
-                    }
+                guard fromLeftEdge && rightward && horizontal else { return }
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showsDailyNews = false
+                }
+                // 同一个触摸若起点落在条目卡片上，还会误触发条目 Button
+                // 推入一篇文章盖在信息流上——清栈兜底；async 再清一次，
+                // 覆盖 Button 在本闭包之后才响应点击的时序
+                router.path.removeAll()
+                DispatchQueue.main.async {
+                    router.path.removeAll()
                 }
             }
     }
