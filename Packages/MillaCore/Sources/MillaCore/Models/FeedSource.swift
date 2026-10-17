@@ -72,7 +72,7 @@ public struct FeedSource: Identifiable, Codable, Equatable, Hashable, Sendable {
         url: URL,
         isEnabled: Bool = true,
         dailyLimit: Int = 10,
-        sampleSize: Int = 5,
+        sampleSize: Int = 2,
         qualityScore: Double = 0.8,
         focus: SourceFocus = .balanced,
         addedAt: Date = Date(),

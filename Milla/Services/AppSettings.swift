@@ -52,7 +52,7 @@ final class AppSettings {
         self.recencyHalfLifeHours = defaults.object(forKey: Keys.halfLife) as? Double ?? 24
         self.stochasticSampling = defaults.object(forKey: Keys.stochastic) as? Bool ?? false
         self.defaultDailyLimit = defaults.object(forKey: Keys.defaultDailyLimit) as? Int ?? 10
-        self.defaultSampleSize = defaults.object(forKey: Keys.defaultSampleSize) as? Int ?? 5
+        self.defaultSampleSize = defaults.object(forKey: Keys.defaultSampleSize) as? Int ?? 2
         self.defaultQualityScore = defaults.object(forKey: Keys.defaultQualityScore) as? Double ?? 0.8
         self.appearanceMode = AppearanceMode(
             rawValue: defaults.string(forKey: Keys.appearanceMode) ?? ""

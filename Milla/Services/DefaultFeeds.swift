@@ -10,15 +10,15 @@ enum DefaultFeeds {
             title: "虎嗅",
             url: URL(string: "https://rss.aishort.top/?type=huxiu")!,
             dailyLimit: 10,
-            sampleSize: 5,
+            sampleSize: 2,
             qualityScore: 0.8,
             focus: .balanced
         ),
         FeedSource(
             title: "少数派",
             url: URL(string: "https://sspai.com/feed")!,
-            dailyLimit: 8,
-            sampleSize: 4,
+            dailyLimit: 10,
+            sampleSize: 2,
             qualityScore: 0.85,
             focus: .depth
         ),
@@ -26,17 +26,36 @@ enum DefaultFeeds {
             title: "联合早报·中国",
             url: URL(string: "https://plink.anyfeeder.com/zaobao/realtime/china")!,
             dailyLimit: 10,
-            sampleSize: 5,
+            sampleSize: 2,
             qualityScore: 0.8,
             focus: .timeliness
         ),
         FeedSource(
             title: "知乎日报",
             url: URL(string: "https://plink.anyfeeder.com/zhihu/daily")!,
-            dailyLimit: 6,
-            sampleSize: 3,
+            dailyLimit: 10,
+            sampleSize: 2,
             qualityScore: 0.75,
             focus: .depth
+        ),
+        FeedSource(
+            title: "热摸爽",
+            url: URL(string: "https://remoshuang.com/feed.xml")!,
+            dailyLimit: 10,
+            sampleSize: 2,
+            qualityScore: 0.7,
+            focus: .timeliness
         )
+    ]
+}
+
+extension DefaultFeeds {
+    /// 各默认源上一版的 (dailyLimit, sampleSize)，用于迁移时识别
+    /// "用户没动过"的老数据（与旧值一致才升级，用户改过的不覆盖）。
+    static let legacyLimits: [String: (dailyLimit: Int, sampleSize: Int)] = [
+        "https://rss.aishort.top/?type=huxiu": (10, 5),
+        "https://sspai.com/feed": (8, 4),
+        "https://plink.anyfeeder.com/zaobao/realtime/china": (10, 5),
+        "https://plink.anyfeeder.com/zhihu/daily": (6, 3)
     ]
 }

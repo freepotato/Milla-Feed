@@ -51,6 +51,37 @@ final class FeedRepository {
         if changed { try? context.save() }
     }
 
+    /// 幂等迁移：
+    /// 1. 默认配置里新增的源（老安装库里没有该 URL）自动补种；
+    /// 2. 仍停留在旧默认 dailyLimit/sampleSize 的默认源升级为最新默认值，
+    ///    用户手动改过的（与旧值不一致）不覆盖。
+    func migrateDefaultSourcesIfNeeded(
+        _ defaults: [FeedSource],
+        legacyLimits: [String: (dailyLimit: Int, sampleSize: Int)]
+    ) {
+        let storedByURL = Dictionary(
+            allStoredSources().map { ($0.urlString, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var changed = false
+        for source in defaults {
+            let key = source.url.absoluteString
+            guard let stored = storedByURL[key] else {
+                context.insert(StoredFeedSource(source))
+                changed = true
+                continue
+            }
+            if let legacy = legacyLimits[key],
+               stored.dailyLimit == legacy.dailyLimit,
+               stored.sampleSize == legacy.sampleSize {
+                stored.dailyLimit = source.dailyLimit
+                stored.sampleSize = source.sampleSize
+                changed = true
+            }
+        }
+        if changed { try? context.save() }
+    }
+
     // MARK: - Sources
 
     func allStoredSources() -> [StoredFeedSource] {
