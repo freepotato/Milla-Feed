@@ -48,39 +48,66 @@ struct HTMLTextView: UIViewRepresentable {
         return CGSize(width: width, height: measured.height)
     }
 
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    /// 跟踪最新一次渲染请求：异步解析完成时若已有更新的请求，直接丢弃结果。
+    final class Coordinator {
+        var generation = 0
+    }
+
     func updateUIView(_ textView: UITextView, context: Context) {
+        context.coordinator.generation += 1
+        let generation = context.coordinator.generation
+
         let body = html.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty, let data = Self.readerDocument(body).data(using: .utf8) else {
             textView.text = HTMLText.plainText(from: body, maximumLength: 10_000)
             return
         }
 
+        // HTML 导入（含远程图片附件抓取）非常耗时，放后台解析，
+        // 完成后回主线程一次性设置——避免长文打开时整页卡住。
+        let coordinator = context.coordinator
+        Task.detached(priority: .userInitiated) { [textView, coordinator] in
+            let rendered = Self.renderAttributed(from: data)
+            await MainActor.run {
+                guard generation == coordinator.generation else { return }
+                if let rendered {
+                    textView.attributedText = rendered
+                } else {
+                    textView.text = HTMLText.plainText(from: body, maximumLength: 10_000)
+                }
+                textView.invalidateIntrinsicContentSize()
+            }
+        }
+    }
+
+    /// 后台执行：HTML -> AttributedString，并做链接剥离与颜色归一。
+    private nonisolated static func renderAttributed(from data: Data) -> NSAttributedString? {
         let options: [NSAttributedString.DocumentReadingOptionKey: Any] = [
             .documentType: NSAttributedString.DocumentType.html,
             .characterEncoding: String.Encoding.utf8.rawValue
         ]
-
-        if let attributed = try? NSMutableAttributedString(
+        guard let attributed = try? NSMutableAttributedString(
             data: data,
             options: options,
             documentAttributes: nil
-        ) {
-            let fullRange = NSRange(location: 0, length: attributed.length)
-            // 剥离全部超链接属性（净化器已去 <a>，此处兜底处理内联 URL 等）
-            attributed.enumerateAttribute(.link, in: fullRange) { _, range, _ in
-                attributed.removeAttribute(.link, range: range)
-            }
-            // HTML 解析器会给文字写死颜色（深色模式下黑底黑字），
-            // 统一替换为动态 label 色。
-            attributed.enumerateAttribute(.foregroundColor, in: fullRange) { value, range, _ in
-                guard value != nil else { return }
-                attributed.addAttribute(.foregroundColor, value: UIColor.label, range: range)
-            }
-            textView.attributedText = attributed
-            textView.invalidateIntrinsicContentSize()
-        } else {
-            textView.text = HTMLText.plainText(from: body, maximumLength: 10_000)
+        ) else { return nil }
+
+        let fullRange = NSRange(location: 0, length: attributed.length)
+        // 剥离全部超链接属性（净化器已去 <a>，此处兜底处理内联 URL 等）
+        attributed.enumerateAttribute(.link, in: fullRange) { _, range, _ in
+            attributed.removeAttribute(.link, range: range)
         }
+        // HTML 解析器会给文字写死颜色（深色模式下黑底黑字），
+        // 统一替换为动态 label 色。
+        attributed.enumerateAttribute(.foregroundColor, in: fullRange) { value, range, _ in
+            guard value != nil else { return }
+            attributed.addAttribute(.foregroundColor, value: UIColor.label, range: range)
+        }
+        return attributed
     }
 
     /// 把超过版心宽度的图片附件等比缩小。

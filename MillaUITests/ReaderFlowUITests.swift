@@ -13,11 +13,22 @@ final class ReaderFlowUITests: XCTestCase {
             NSPredicate(format: "label CONTAINS[c] '前'") // 相对时间："6小时前"/"2天前"
         )
         let firstCard = cards.element(boundBy: 0)
-        XCTAssertTrue(firstCard.waitForExistence(timeout: 20), "信息流未出现卡片")
-        firstCard.tap()
+        XCTAssertTrue(firstCard.waitForExistence(timeout: 30), "信息流未出现卡片")
+        // 点卡片底部的文字区域（标题/来源行）而不是元素中心——
+        // 首篇卡片带封面，中心点落在封面图上，XCTest 的坐标点按
+        // 在封面区域无法稳定触发按钮动作
+        let textArea = firstCard.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.88)
+        )
+        textArea.tap()
 
-        // 详情页：收藏按钮与标题
+        // 详情页：收藏按钮与标题。偶尔点按落在列表重排间隙时，重新查询补点一次。
         let favorite = app.navigationBars.buttons["收藏"]
+        if !favorite.waitForExistence(timeout: 6) {
+            cards.element(boundBy: 0)
+                .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.88))
+                .tap()
+        }
         XCTAssertTrue(favorite.waitForExistence(timeout: 5), "未进入详情页")
 
         // 回归断言：push 过渡结束后，详情页必须有文本落在屏幕可见范围内

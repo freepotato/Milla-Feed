@@ -52,25 +52,20 @@ struct FeedCardView: View {
     @ViewBuilder
     private var cover: some View {
         if let imageURL = ranked.item.imageURL {
-            AsyncImage(url: imageURL) { phase in
-                switch phase {
-                case .empty:
-                    coverPlaceholder
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: 180)
-                        .clipped()
-                case .failure:
-                    coverPlaceholder
-                @unknown default:
-                    coverPlaceholder
-                }
+            CoverImageView(url: imageURL) { image in
+                image
+                    .aspectRatio(contentMode: .fill)
+                    .frame(height: 180)
+                    .clipped()
+            } placeholder: {
+                coverPlaceholder
             }
             .frame(maxWidth: .infinity)
             .frame(height: 180)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            // 封面是按钮内的纯装饰：不参与命中测试，
+            // 避免图片加载完成瞬间的视图更替吞掉对卡片的点按
+            .allowsHitTesting(false)
         }
     }
 

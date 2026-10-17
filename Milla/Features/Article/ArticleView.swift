@@ -28,19 +28,16 @@ struct ArticleView: View {
                 metaRow
 
                 if let imageURL = ranked.item.imageURL {
-                    AsyncImage(url: imageURL) { phase in
-                        switch phase {
-                        case .success(let image):
-                            // 封面按横向宽度自适应完整展示（不裁切不压扁）；
-                            // 超高竖图按 480pt 高度兜底整体缩小
-                            image.resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: .infinity, maxHeight: 480)
-                        default:
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(AppColors.screenBackground)
-                                .frame(height: 160)
-                        }
+                    CoverImageView(url: imageURL) { image in
+                        // 封面按横向宽度自适应完整展示（不裁切不压扁）；
+                        // 超高竖图按 480pt 高度兜底整体缩小
+                        image
+                            .scaledToFit()
+                            .frame(maxWidth: .infinity, maxHeight: 480)
+                    } placeholder: {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(AppColors.screenBackground)
+                            .frame(height: 160)
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
