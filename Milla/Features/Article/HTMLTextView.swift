@@ -57,6 +57,12 @@ struct HTMLTextView: UIViewRepresentable {
         var generation = 0
     }
 
+    /// NSAttributedString 是不可变对象，后台解析完成后跨线程读取是安全的；
+    /// 用 @unchecked 包装满足 @Sendable 闭包的捕获检查（Swift 6 下未包装会直接报错）。
+    private struct SendableAttributedText: @unchecked Sendable {
+        let value: NSAttributedString?
+    }
+
     func updateUIView(_ textView: UITextView, context: Context) {
         context.coordinator.generation += 1
         let generation = context.coordinator.generation
@@ -71,10 +77,10 @@ struct HTMLTextView: UIViewRepresentable {
         // 完成后回主线程一次性设置——避免长文打开时整页卡住。
         let coordinator = context.coordinator
         Task.detached(priority: .userInitiated) { [textView, coordinator] in
-            let rendered = Self.renderAttributed(from: data)
+            let rendered = SendableAttributedText(value: Self.renderAttributed(from: data))
             await MainActor.run {
                 guard generation == coordinator.generation else { return }
-                if let rendered {
+                if let rendered = rendered.value {
                     textView.attributedText = rendered
                 } else {
                     textView.text = HTMLText.plainText(from: body, maximumLength: 10_000)
