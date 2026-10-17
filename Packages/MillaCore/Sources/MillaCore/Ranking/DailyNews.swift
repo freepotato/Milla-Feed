@@ -1,6 +1,6 @@
 import Foundation
 
-/// 每日新闻支持：时段计算、候选挑选、一句话概括。
+/// 每日新闻支持：时段计算与候选挑选（条目展示直接用原文标题）。
 ///
 /// 纯函数、跨平台可测；App 层的 `DailyNewsViewModel` 只负责
 /// 网络同步、持久化与展示编排。
@@ -82,32 +82,5 @@ public enum DailyNews {
         }
         .prefix(limit)
         .map { $0 }
-    }
-
-    /// 一句话概括：取摘要第一句，过短则补第二句，再按字数截断；
-    /// 摘要为空时回退到标题。
-    public static func makeHeadline(
-        title: String,
-        summary: String,
-        limit: Int = 56
-    ) -> String {
-        let cleaned = summary
-            .replacingOccurrences(of: "\n", with: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let source = cleaned.isEmpty ? title : cleaned
-        let terminators = CharacterSet(charactersIn: "。！？!?.;；")
-        let sentences = source
-            .components(separatedBy: terminators)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        guard var headline = sentences.first else { return title }
-        // 第一句太短（如"快讯"）时补第二句；16 字以上本身已是合格的概括
-        if headline.count < 16, sentences.count > 1 {
-            headline += "，" + sentences[1]
-        }
-        if headline.count > limit {
-            headline = String(headline.prefix(limit)) + "…"
-        }
-        return headline
     }
 }

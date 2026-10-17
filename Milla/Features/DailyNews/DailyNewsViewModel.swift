@@ -3,7 +3,7 @@ import Observation
 import MillaCore
 
 /// 每日新闻：每天两个时段各从全部订阅源抓取一次，挑出 24 小时内
-/// 最具时效性的 10 条文章，各配一句话概括。
+/// 最具时效性的 10 条文章，条目展示原文标题。
 ///
 /// 时段规则（产品要求）：
 /// - 上午版：7:00–12:00 进入页面时生成一次；当天已生成则直接展示，不重新抓取；
@@ -94,10 +94,7 @@ final class DailyNewsViewModel {
             entries: top.map { ranked in
                 DailyNewsDigest.StoredEntry(
                     articleID: ranked.item.id,
-                    headline: DailyNews.makeHeadline(
-                        title: ranked.item.title,
-                        summary: ranked.item.summary
-                    )
+                    headline: ranked.item.title
                 )
             }
         )

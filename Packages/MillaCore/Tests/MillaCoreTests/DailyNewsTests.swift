@@ -139,36 +139,4 @@ final class DailyNewsTests: XCTestCase {
         // 同源同质量：新者分数高，顺序应严格按发布时间倒序（n1 最新在前）
         XCTAssertEqual(top.map(\.item.id), items.prefix(10).map(\.id))
     }
-
-    // MARK: - 一句话概括
-
-    func testHeadlineTakesFirstSentence() {
-        let headline = DailyNews.makeHeadline(
-            title: "备用标题",
-            summary: "苹果发布新款 iPhone，搭载 A19 芯片。发布会还介绍了新手表。"
-        )
-        XCTAssertEqual(headline, "苹果发布新款 iPhone，搭载 A19 芯片")
-    }
-
-    func testHeadlineAppendsSecondSentenceWhenFirstTooShort() {
-        let headline = DailyNews.makeHeadline(
-            title: "备用标题",
-            summary: "快讯。苹果公司于今日凌晨正式发布了全新一代旗舰手机产品。"
-        )
-        XCTAssertEqual(headline, "快讯，苹果公司于今日凌晨正式发布了全新一代旗舰手机产品")
-    }
-
-    func testHeadlineTruncatesLongText() {
-        let long = String(repeating: "很长的句子", count: 30)
-        let headline = DailyNews.makeHeadline(title: "备用标题", summary: long)
-        XCTAssertTrue(headline.hasSuffix("…"))
-        XCTAssertEqual(headline.count, 57) // 56 + 省略号
-    }
-
-    func testHeadlineFallsBackToTitleWhenSummaryEmpty() {
-        XCTAssertEqual(
-            DailyNews.makeHeadline(title: "只有标题", summary: "  \n "),
-            "只有标题"
-        )
-    }
 }
