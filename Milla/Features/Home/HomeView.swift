@@ -10,59 +10,27 @@ struct HomeView: View {
 
     @State private var viewModel = HomeViewModel()
     @State private var didInitialLoad = false
+    @State private var showsDailyNews = false
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: AppSpacing.stackVertical) {
-                TopBannerView {
-                    router.path.append(Route.settings)
-                }
-
-                switch viewModel.state {
-                case .initial, .loading:
-                    loadingBlock
-                case .loaded:
-                    cardsBlock
-                    if let message = viewModel.failureMessage {
-                        failureBanner(message)
+        // 每日新闻模式下不挂下拉刷新（它有自己"当天已抓不再抓"的节奏）
+        Group {
+            if showsDailyNews {
+                scrollContent
+            } else {
+                scrollContent
+                    .refreshable {
+                        await viewModel.load(
+                            repository: repository,
+                            settings: settings,
+                            refreshNetwork: true
+                        )
                     }
-                case .empty(let message):
-                    EmptyStateView(
-                        systemImage: "tray",
-                        title: "没有可展示的内容",
-                        message: message
-                    ) {
-                        // 无内容
-                    }
-                case .error(let message):
-                    EmptyStateView(
-                        systemImage: "wifi.exclamationmark",
-                        title: "加载失败",
-                        message: message,
-                        actionTitle: "重试"
-                    ) {
-                        Task {
-                            await viewModel.load(
-                                repository: repository,
-                                settings: settings,
-                                refreshNetwork: true
-                            )
-                        }
-                    }
-                }
             }
-            .padding(.bottom, 24)
         }
         .background(AppColors.screenBackground)
         .millaAdaptiveChrome()
         .toolbar(.hidden, for: .navigationBar)
-        .refreshable {
-            await viewModel.load(
-                repository: repository,
-                settings: settings,
-                refreshNetwork: true
-            )
-        }
         .task {
             guard !didInitialLoad else { return }
             didInitialLoad = true
@@ -76,6 +44,67 @@ struct HomeView: View {
             // 从详情页返回时同步已读态，不触发网络请求
             if didInitialLoad {
                 viewModel.rebuild(repository: repository, settings: settings)
+            }
+        }
+    }
+
+    private var scrollContent: some View {
+        ScrollView {
+            LazyVStack(spacing: AppSpacing.stackVertical) {
+                TopBannerView(
+                    isDailyNews: showsDailyNews,
+                    onTapLogo: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showsDailyNews.toggle()
+                        }
+                    },
+                    onTapSettings: {
+                        router.path.append(Route.settings)
+                    }
+                )
+
+                if showsDailyNews {
+                    DailyNewsView()
+                } else {
+                    feedContent
+                }
+            }
+            .padding(.bottom, 24)
+        }
+    }
+
+    @ViewBuilder
+    private var feedContent: some View {
+        switch viewModel.state {
+        case .initial, .loading:
+            loadingBlock
+        case .loaded:
+            cardsBlock
+            if let message = viewModel.failureMessage {
+                failureBanner(message)
+            }
+        case .empty(let message):
+            EmptyStateView(
+                systemImage: "tray",
+                title: "没有可展示的内容",
+                message: message
+            ) {
+                // 无内容
+            }
+        case .error(let message):
+            EmptyStateView(
+                systemImage: "wifi.exclamationmark",
+                title: "加载失败",
+                message: message,
+                actionTitle: "重试"
+            ) {
+                Task {
+                    await viewModel.load(
+                        repository: repository,
+                        settings: settings,
+                        refreshNetwork: true
+                    )
+                }
             }
         }
     }
