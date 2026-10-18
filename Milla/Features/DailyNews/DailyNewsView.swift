@@ -1,16 +1,13 @@
 import SwiftUI
 import MillaCore
 
-/// 每日新闻页：每天上午/午后各生成一次的 10 条时效性新闻速览。
+/// 每日新闻页：热摸爽「今日大事」，默认 Top 10，可切换分类板块。
 /// 点击左上角 Milla logo 进入/退出（由 HomeView 切换）。
 struct DailyNewsView: View {
 
-    @Environment(FeedRepository.self) private var repository
-    @Environment(AppSettings.self) private var settings
-    @Environment(AppRouter.self) private var router
-
     @State private var viewModel = DailyNewsViewModel()
     @State private var didLoad = false
+    @State private var selectedEvent: RemoShuangToday.Event?
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppSpacing.stackVertical) {
@@ -18,20 +15,26 @@ struct DailyNewsView: View {
 
             if viewModel.isGenerating {
                 generatingBlock
-            } else if let message = viewModel.emptyMessage, viewModel.entries.isEmpty {
+            } else if let message = viewModel.emptyMessage, viewModel.events.isEmpty {
                 EmptyStateView(
                     systemImage: "newspaper",
                     title: "暂时没有每日新闻",
                     message: message
                 ) {}
             } else {
+                categoryChips
                 entriesBlock
             }
         }
         .task {
             guard !didLoad else { return }
             didLoad = true
-            await viewModel.loadIfNeeded(repository: repository, settings: settings)
+            await viewModel.loadIfNeeded()
+        }
+        .sheet(item: $selectedEvent) { event in
+            if let url = event.eventURL {
+                SafariView(url: url)
+            }
         }
     }
 
@@ -52,8 +55,8 @@ struct DailyNewsView: View {
                     .clipShape(Capsule())
             }
             Spacer()
-            if let generatedAt = viewModel.generatedAt {
-                Text(DateFormatting.relativeText(from: generatedAt) + "更新")
+            if let fetchedAt = viewModel.fetchedAt {
+                Text(DateFormatting.relativeText(from: fetchedAt) + "更新")
                     .font(.caption)
                     .foregroundStyle(AppColors.tertiaryText)
             }
@@ -64,7 +67,7 @@ struct DailyNewsView: View {
     private var generatingBlock: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text("正在抓取 24 小时内的新闻…")
+            Text("正在抓取今日大事…")
                 .font(.subheadline)
                 .foregroundStyle(AppColors.secondaryText)
         }
@@ -72,20 +75,37 @@ struct DailyNewsView: View {
         .padding(.top, 60)
     }
 
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.categories) { category in
+                    let isSelected = category.key == viewModel.selectedCategoryKey
+                    Button {
+                        viewModel.selectCategory(category.key)
+                    } label: {
+                        Text(category.label)
+                            .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? Color.white : AppColors.primaryText)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(
+                                Capsule().fill(
+                                    isSelected ? AppColors.brand : AppColors.cardBackground
+                                )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("分类：\(category.label)")
+                }
+            }
+            .padding(.horizontal, AppSpacing.screenHorizontal)
+        }
+    }
+
     private var entriesBlock: some View {
-        ForEach(Array(viewModel.entries.enumerated()), id: \.element.id) { index, entry in
+        ForEach(Array(viewModel.events.enumerated()), id: \.element.id) { index, event in
             Button {
-                router.path.append(
-                    Route.article(
-                        RankedFeedItem(
-                            item: entry.item,
-                            sourceID: entry.item.sourceID,
-                            qualityScore: 0,
-                            recencyScore: 0,
-                            score: 0
-                        )
-                    )
-                )
+                selectedEvent = event
             } label: {
                 HStack(alignment: .top, spacing: 12) {
                     Text("\(index + 1)")
@@ -100,20 +120,20 @@ struct DailyNewsView: View {
                         .padding(.top, 1)
 
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(entry.headline)
+                        Text(event.title)
                             .font(.body)
                             .foregroundStyle(AppColors.primaryText)
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
                         HStack(spacing: 6) {
-                            Text(entry.sourceTitle)
+                            Text("\(event.sourceCount) 家报道")
                                 .font(.caption)
                                 .fontWeight(.medium)
                                 .foregroundStyle(AppColors.brand)
                             Text("·")
                                 .font(.caption)
                                 .foregroundStyle(AppColors.tertiaryText)
-                            Text(DateFormatting.relativeText(from: entry.publishedAt))
+                            Text(event.category)
                                 .font(.caption)
                                 .foregroundStyle(AppColors.tertiaryText)
                             Spacer()
@@ -131,7 +151,7 @@ struct DailyNewsView: View {
                 .padding(.horizontal, AppSpacing.screenHorizontal)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("第 \(index + 1) 条：\(entry.headline)")
+            .accessibilityLabel("第 \(index + 1) 条：\(event.title)")
         }
     }
 }
