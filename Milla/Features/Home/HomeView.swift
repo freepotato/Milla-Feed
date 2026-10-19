@@ -1,5 +1,4 @@
 import SwiftUI
-import MillaCore
 
 /// 首页信息流。
 struct HomeView: View {
@@ -10,29 +9,28 @@ struct HomeView: View {
 
     @State private var viewModel = HomeViewModel()
     @State private var didInitialLoad = false
-    @State private var showsDailyNews = false
 
     var body: some View {
-        // 每日新闻模式下不挂下拉刷新（它有自己"当天已抓不再抓"的节奏）；
-        // 同时从左边缘右滑可直接退回信息流（该页不在导航栈里，系统返回手势够不到）
-        Group {
-            if showsDailyNews {
-                scrollContent
-                    .simultaneousGesture(backToFeedGesture)
-            } else {
-                scrollContent
-                    .refreshable {
-                        await viewModel.load(
-                            repository: repository,
-                            settings: settings,
-                            refreshNetwork: true
-                        )
-                    }
+        ScrollView {
+            LazyVStack(spacing: AppSpacing.stackVertical) {
+                TopBannerView(onTapSettings: {
+                    router.path.append(Route.settings)
+                })
+
+                feedContent
             }
+            .padding(.bottom, 24)
         }
         .background(AppColors.screenBackground)
         .millaAdaptiveChrome()
         .toolbar(.hidden, for: .navigationBar)
+        .refreshable {
+            await viewModel.load(
+                repository: repository,
+                settings: settings,
+                refreshNetwork: true
+            )
+        }
         .task {
             guard !didInitialLoad else { return }
             didInitialLoad = true
@@ -50,53 +48,6 @@ struct HomeView: View {
         }
     }
 
-    private var scrollContent: some View {
-        ScrollView {
-            LazyVStack(spacing: AppSpacing.stackVertical) {
-                TopBannerView(
-                    isDailyNews: showsDailyNews,
-                    onTapLogo: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            showsDailyNews.toggle()
-                        }
-                    },
-                    onTapSettings: {
-                        router.path.append(Route.settings)
-                    }
-                )
-
-                if showsDailyNews {
-                    DailyNewsView()
-                } else {
-                    feedContent
-                }
-            }
-            .padding(.bottom, 24)
-        }
-    }
-
-    /// 左边缘右滑退回信息流：要求起点靠近屏幕左缘、横向为主、距离足够，
-    /// 避免与纵向滚动冲突（simultaneousGesture 不拦截滚动）。
-    private var backToFeedGesture: some Gesture {
-        DragGesture(minimumDistance: 20, coordinateSpace: .local)
-            .onEnded { value in
-                let fromLeftEdge = value.startLocation.x < 40
-                let rightward = value.translation.width > 80
-                let horizontal = abs(value.translation.width) > abs(value.translation.height) * 1.5
-                guard fromLeftEdge && rightward && horizontal else { return }
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    showsDailyNews = false
-                }
-                // 同一个触摸若起点落在条目卡片上，还会误触发条目 Button
-                // 推入一篇文章盖在信息流上——清栈兜底；async 再清一次，
-                // 覆盖 Button 在本闭包之后才响应点击的时序
-                router.path.removeAll()
-                DispatchQueue.main.async {
-                    router.path.removeAll()
-                }
-            }
-    }
-
     @ViewBuilder
     private var feedContent: some View {
         switch viewModel.state {
@@ -112,9 +63,7 @@ struct HomeView: View {
                 systemImage: "tray",
                 title: "没有可展示的内容",
                 message: message
-            ) {
-                // 无内容
-            }
+            ) {}
         case .error(let message):
             EmptyStateView(
                 systemImage: "wifi.exclamationmark",
@@ -174,8 +123,10 @@ struct HomeView: View {
 }
 
 #Preview("首页") {
-    RootView()
-        .environment(AppSettings())
-        .environment(try! FeedRepository(inMemory: true))
-        .environment(AppRouter())
+    NavigationStack {
+        HomeView()
+    }
+    .environment(AppSettings())
+    .environment(try! FeedRepository(inMemory: true))
+    .environment(AppRouter())
 }

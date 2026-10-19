@@ -1,31 +1,35 @@
 import SwiftUI
+import UIKit
 import MillaCore
 
-/// 每日新闻页：热摸爽「今日大事」，默认 Top 10，可切换分类板块。
-/// 点击左上角 Milla logo 进入/退出（由 HomeView 切换）。
+/// 每日新闻页：热摸爽「今日大事」，默认 Top 10，可左右滑动切换分类板块。
 struct DailyNewsView: View {
+
+    let onTapSettings: () -> Void
 
     @State private var viewModel = DailyNewsViewModel()
     @State private var didLoad = false
     @State private var selectedEvent: RemoShuangToday.Event?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: AppSpacing.stackVertical) {
+        @Bindable var viewModel = viewModel
+        VStack(spacing: 0) {
             header
+            categoryChips
 
             if viewModel.isGenerating {
                 generatingBlock
-            } else if let message = viewModel.emptyMessage, viewModel.events.isEmpty {
+            } else if viewModel.categories.isEmpty, let message = viewModel.emptyMessage {
                 EmptyStateView(
                     systemImage: "newspaper",
                     title: "暂时没有每日新闻",
                     message: message
                 ) {}
             } else {
-                categoryChips
-                entriesBlock
+                pagedCategories
             }
         }
+        .background(AppColors.screenBackground)
         .task {
             guard !didLoad else { return }
             didLoad = true
@@ -59,9 +63,20 @@ struct DailyNewsView: View {
                 Text(DateFormatting.relativeText(from: fetchedAt) + "更新")
                     .font(.caption)
                     .foregroundStyle(AppColors.tertiaryText)
+                    .padding(.trailing, 4)
             }
+            Button(action: onTapSettings) {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(AppColors.primaryText)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("设置")
         }
         .padding(.horizontal, AppSpacing.screenHorizontal)
+        .padding(.top, AppSpacing.bannerTop)
+        .padding(.bottom, AppSpacing.bannerBottom)
     }
 
     private var generatingBlock: some View {
@@ -71,8 +86,7 @@ struct DailyNewsView: View {
                 .font(.subheadline)
                 .foregroundStyle(AppColors.secondaryText)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 60)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var categoryChips: some View {
@@ -100,58 +114,98 @@ struct DailyNewsView: View {
             }
             .padding(.horizontal, AppSpacing.screenHorizontal)
         }
+        .padding(.bottom, 8)
     }
 
-    private var entriesBlock: some View {
-        ForEach(Array(viewModel.events.enumerated()), id: \.element.id) { index, event in
-            Button {
-                selectedEvent = event
-            } label: {
-                HStack(alignment: .top, spacing: 12) {
-                    Text("\(index + 1)")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(index < 3 ? Color.white : AppColors.secondaryText)
-                        .frame(width: 26, height: 26)
-                        .background(
-                            Circle().fill(
-                                index < 3 ? AppColors.brand : AppColors.screenBackground
-                            )
-                        )
-                        .padding(.top, 1)
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(event.title)
-                            .font(.body)
-                            .foregroundStyle(AppColors.primaryText)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                        HStack(spacing: 6) {
-                            Text("\(event.sourceCount) 家报道")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundStyle(AppColors.brand)
-                            Text("·")
-                                .font(.caption)
-                                .foregroundStyle(AppColors.tertiaryText)
-                            Text(event.category)
-                                .font(.caption)
-                                .foregroundStyle(AppColors.tertiaryText)
-                            Spacer()
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                .padding(AppSpacing.cardInner)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(AppColors.cardBackground)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: AppSpacing.cornerRadius, style: .continuous)
+    /// 分类分页：每个分类一页，左右滑动切换（iOS 原生分页拖动感）。
+    private var pagedCategories: some View {
+        TabView(selection: $viewModel.selectedCategoryKey) {
+            ForEach(viewModel.categories) { category in
+                CategoryEntriesPage(
+                    events: viewModel.events(for: category.key),
+                    onSelect: { selectedEvent = $0 }
                 )
-                .shadow(color: .black.opacity(0.06), radius: AppSpacing.shadowRadius, x: 0, y: 3)
-                .padding(.horizontal, AppSpacing.screenHorizontal)
+                .tag(category.key)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("第 \(index + 1) 条：\(event.title)")
         }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .onChange(of: viewModel.selectedCategoryKey) { _, _ in
+            viewModel.applySelection()
+        }
+    }
+}
+
+// MARK: - 单分类条目页
+
+private struct CategoryEntriesPage: View {
+
+    let events: [RemoShuangToday.Event]
+    let onSelect: (RemoShuangToday.Event) -> Void
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: AppSpacing.stackVertical) {
+                ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                    eventRow(event, index: index)
+                }
+            }
+            .padding(.bottom, 24)
+        }
+    }
+
+    private func eventRow(_ event: RemoShuangToday.Event, index: Int) -> some View {
+        Button {
+            onSelect(event)
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Text("\(index + 1)")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(index < 3 ? Color.white : AppColors.secondaryText)
+                    .frame(width: 26, height: 26)
+                    .background(
+                        Circle().fill(
+                            index < 3 ? AppColors.brand : AppColors.screenBackground
+                        )
+                    )
+                    .padding(.top, 1)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(event.title)
+                        .font(.body)
+                        .foregroundStyle(AppColors.primaryText)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .contextMenu {
+                            Button("复制标题", systemImage: "doc.on.doc") {
+                                UIPasteboard.general.string = event.title
+                            }
+                        }
+                    HStack(spacing: 6) {
+                        Text("\(event.sourceCount) 家报道")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(AppColors.brand)
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(AppColors.tertiaryText)
+                        Text(event.category)
+                            .font(.caption)
+                            .foregroundStyle(AppColors.tertiaryText)
+                        Spacer()
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(AppSpacing.cardInner)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppColors.cardBackground)
+            .clipShape(
+                RoundedRectangle(cornerRadius: AppSpacing.cornerRadius, style: .continuous)
+            )
+            .shadow(color: .black.opacity(0.06), radius: AppSpacing.shadowRadius, x: 0, y: 3)
+            .padding(.horizontal, AppSpacing.screenHorizontal)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("第 \(index + 1) 条：\(event.title)")
     }
 }

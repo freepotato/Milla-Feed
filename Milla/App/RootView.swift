@@ -1,7 +1,29 @@
 import SwiftUI
 import MillaCore
 
+/// 应用根视图：底部 Tab 栏切换「信息流」与「新闻」。
 struct RootView: View {
+
+    var body: some View {
+        TabView {
+            FeedTab()
+                .tabItem {
+                    Label("信息流", systemImage: "list.bullet.rectangle")
+                }
+                .tag(0)
+
+            NewsTab()
+                .tabItem {
+                    Label("新闻", systemImage: "newspaper.fill")
+                }
+                .tag(1)
+        }
+        .tint(AppColors.brand)
+    }
+}
+
+/// 信息流 Tab：NavigationStack 承载设置与文章详情。
+struct FeedTab: View {
 
     @Environment(AppRouter.self) private var router
 
@@ -17,6 +39,25 @@ struct RootView: View {
                         ArticleView(ranked: ranked)
                     }
                 }
+        }
+    }
+}
+
+/// 新闻 Tab：承载每日新闻页，设置走本 Tab 内的导航栈。
+struct NewsTab: View {
+
+    @State private var path: [Route] = []
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            DailyNewsView {
+                path.append(Route.settings)
+            }
+            .navigationDestination(for: Route.self) { route in
+                if case .settings = route {
+                    SettingsView()
+                }
+            }
         }
     }
 }

@@ -72,6 +72,13 @@ final class DailyNewsViewModel {
         applySelection()
     }
 
+    /// 按分类键取对应条目（TabView 分页直接使用，不依赖当前选中状态）。
+    func events(for categoryKey: String) -> [RemoShuangToday.Event] {
+        guard let payload else { return [] }
+        if categoryKey == Self.topCategoryKey { return payload.top }
+        return payload.sections.first { $0.key == categoryKey }?.items ?? []
+    }
+
     // MARK: - 抓取
 
     private func generate(slot: (key: String, name: String), now: Date) async {
@@ -115,7 +122,7 @@ final class DailyNewsViewModel {
         applySelection()
     }
 
-    private func applySelection() {
+    func applySelection() {
         guard let payload else {
             events = []
             return
