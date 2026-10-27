@@ -2,14 +2,14 @@ import SwiftUI
 import UIKit
 import MillaCore
 
-/// 每日新闻页：热摸爽「今日大事」，默认 Top 10，可左右滑动切换分类板块。
+/// 每日新闻页：热摸爽主页热榜，默认综合，可左右滑动切换大类；每小时抓取一次。
 struct DailyNewsView: View {
 
     let onTapSettings: () -> Void
 
     @State private var viewModel = DailyNewsViewModel()
     @State private var didLoad = false
-    @State private var selectedEvent: RemoShuangToday.Event?
+    @State private var selectedEvent: RemoShuangHot.Entry?
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -36,7 +36,7 @@ struct DailyNewsView: View {
             await viewModel.loadIfNeeded()
         }
         .sheet(item: $selectedEvent) { event in
-            if let url = event.eventURL {
+            if let url = event.link {
                 SafariView(url: url)
             }
         }
@@ -82,7 +82,7 @@ struct DailyNewsView: View {
     private var generatingBlock: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text("正在抓取今日大事…")
+            Text("正在抓取热榜…")
                 .font(.subheadline)
                 .foregroundStyle(AppColors.secondaryText)
         }
@@ -139,8 +139,8 @@ struct DailyNewsView: View {
 
 private struct CategoryEntriesPage: View {
 
-    let events: [RemoShuangToday.Event]
-    let onSelect: (RemoShuangToday.Event) -> Void
+    let events: [RemoShuangHot.Entry]
+    let onSelect: (RemoShuangHot.Entry) -> Void
 
     var body: some View {
         ScrollView {
@@ -153,7 +153,7 @@ private struct CategoryEntriesPage: View {
         }
     }
 
-    private func eventRow(_ event: RemoShuangToday.Event, index: Int) -> some View {
+    private func eventRow(_ event: RemoShuangHot.Entry, index: Int) -> some View {
         Button {
             onSelect(event)
         } label: {
@@ -181,16 +181,18 @@ private struct CategoryEntriesPage: View {
                             }
                         }
                     HStack(spacing: 6) {
-                        Text("\(event.sourceCount) 家报道")
+                        Text(event.sourceName)
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundStyle(AppColors.brand)
-                        Text("·")
-                            .font(.caption)
-                            .foregroundStyle(AppColors.tertiaryText)
-                        Text(event.category)
-                            .font(.caption)
-                            .foregroundStyle(AppColors.tertiaryText)
+                        if !event.heat.isEmpty {
+                            Text("·")
+                                .font(.caption)
+                                .foregroundStyle(AppColors.tertiaryText)
+                            Text(event.heat)
+                                .font(.caption)
+                                .foregroundStyle(AppColors.tertiaryText)
+                        }
                         Spacer()
                     }
                 }

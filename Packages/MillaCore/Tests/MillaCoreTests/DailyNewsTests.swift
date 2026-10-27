@@ -9,40 +9,40 @@ final class DailyNewsTests: XCTestCase {
         return calendar
     }
 
-    // MARK: - 时段
+    // MARK: - 小时时段
 
-    func testSlotBoundaries() throws {
+    func testHourlySlotKeyIsUniquePerHour() {
         let formatter = ISO8601DateFormatter()
 
-        // 6:59 → nil（凌晨无时段）
-        let earlyMorning = formatter.date(from: "2026-10-17T06:59:00Z")!
-        XCTAssertNil(DailyNews.currentSlot(now: earlyMorning, calendar: utcCalendar))
+        let t1 = formatter.date(from: "2026-10-17T14:05:00Z")!
+        let t2 = formatter.date(from: "2026-10-17T14:59:00Z")!
+        let t3 = formatter.date(from: "2026-10-17T15:00:00Z")!
 
-        // 7:00 → 上午版
-        let seven = formatter.date(from: "2026-10-17T07:00:00Z")!
-        let am = DailyNews.currentSlot(now: seven, calendar: utcCalendar)
-        XCTAssertEqual(am?.key, "2026-10-17-am")
-        XCTAssertEqual(am?.name, "上午版")
+        let slot1 = DailyNews.hourlySlot(now: t1, calendar: utcCalendar)
+        let slot2 = DailyNews.hourlySlot(now: t2, calendar: utcCalendar)
+        let slot3 = DailyNews.hourlySlot(now: t3, calendar: utcCalendar)
 
-        // 11:59 仍是上午版
-        let beforeNoon = formatter.date(from: "2026-10-17T11:59:00Z")!
+        // 同一小时内 key 相同（用于"本小时已抓不重复抓"）
+        XCTAssertEqual(slot1.key, "2026-10-17-14")
+        XCTAssertEqual(slot1.key, slot2.key)
+        // 跨小时 key 不同
+        XCTAssertEqual(slot3.key, "2026-10-17-15")
+        XCTAssertNotEqual(slot1.key, slot3.key)
+        // 展示名
+        XCTAssertEqual(slot1.name, "14 点档")
+    }
+
+    func testHourlySlotCrossesMidnight() {
+        let formatter = ISO8601DateFormatter()
+        let before = formatter.date(from: "2026-10-17T23:30:00Z")!
+        let after = formatter.date(from: "2026-10-18T00:10:00Z")!
         XCTAssertEqual(
-            DailyNews.currentSlot(now: beforeNoon, calendar: utcCalendar)?.key,
-            "2026-10-17-am"
+            DailyNews.hourlySlot(now: before, calendar: utcCalendar).key,
+            "2026-10-17-23"
         )
-
-        // 12:00 → 午后版
-        let noon = formatter.date(from: "2026-10-17T12:00:00Z")!
         XCTAssertEqual(
-            DailyNews.currentSlot(now: noon, calendar: utcCalendar)?.key,
-            "2026-10-17-pm"
-        )
-
-        // 23:59 仍是午后版
-        let lateNight = formatter.date(from: "2026-10-17T23:59:00Z")!
-        XCTAssertEqual(
-            DailyNews.currentSlot(now: lateNight, calendar: utcCalendar)?.key,
-            "2026-10-17-pm"
+            DailyNews.hourlySlot(now: after, calendar: utcCalendar).key,
+            "2026-10-18-00"
         )
     }
 }

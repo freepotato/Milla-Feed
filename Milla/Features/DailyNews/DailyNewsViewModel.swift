@@ -2,38 +2,36 @@ import Foundation
 import Observation
 import MillaCore
 
-/// 每日新闻：数据源为热摸爽「今日大事」（Top 10 + 各分类板块）。
+/// 每日新闻：数据源为热摸爽主页热榜（综合 + 各大类）。
 ///
-/// 时段规则（产品要求）：
-/// - 上午版：7:00–12:00 进入页面时抓取一次；当天已抓过则直接展示缓存；
-/// - 午后版：12:00 之后同理；
-/// - 0:00–7:00 没有自己的时段，展示最近一次抓取的版本。
+/// 时段规则（产品要求）：每小时抓取一次；本小时内已抓过则直接展示缓存，
+/// 跨小时进入页面才重新抓取。
 ///
-/// 一次请求返回全部分类，切分类只看缓存不重新请求；
-/// 时段计算在 MillaCore 的 ``DailyNews`` 中（跨平台可测）。
+/// 一次请求返回全部来源榜单，切分类只看缓存不重新请求；
+/// 时段计算与榜单组装在 MillaCore（跨平台可测）。
 @MainActor
 @Observable
 final class DailyNewsViewModel {
 
-    /// 顶部分类芯片（"今日大事" + 接口返回的各板块）。
+    /// 顶部分类芯片（"综合" + 各大类）。
     struct Category: Identifiable, Equatable {
         let key: String
         let label: String
         var id: String { key }
     }
 
-    /// 默认分类："今日大事"（Top 10）。
-    static let topCategoryKey = "top"
+    /// 默认分类："综合"。
+    static let combinedKey = "combined"
 
     private(set) var categories: [Category] = []
-    private(set) var events: [RemoShuangToday.Event] = []
+    private(set) var events: [RemoShuangHot.Entry] = []
     private(set) var slotName = ""
     private(set) var fetchedAt: Date?
     private(set) var emptyMessage: String?
-    var selectedCategoryKey = DailyNewsViewModel.topCategoryKey
+    var selectedCategoryKey = DailyNewsViewModel.combinedKey
     var isGenerating = false
 
-    private var payload: RemoShuangToday?
+    private var entriesByCategory: [String: [RemoShuangHot.Entry]] = [:]
     private let service: RemoShuangNewsService
 
     init(service: RemoShuangNewsService = RemoShuangNewsService()) {
@@ -42,20 +40,11 @@ final class DailyNewsViewModel {
 
     // MARK: - 加载
 
-    /// 进入页面时调用：当天该时段已抓过直接展示，否则抓取。
+    /// 进入页面时调用：本小时已抓过直接展示，否则抓取。
     func loadIfNeeded() async {
         emptyMessage = nil
         let now = Date()
-
-        guard let slot = DailyNews.currentSlot(now: now) else {
-            // 凌晨时段：展示最近一次抓取的版本
-            if let stored = storedDigest() {
-                present(stored)
-            } else if events.isEmpty {
-                emptyMessage = "每日新闻会在早上 7 点后更新第一批，稍后再来看看。"
-            }
-            return
-        }
+        let slot = DailyNews.hourlySlot(now: now)
 
         if let stored = storedDigest(), stored.slotKey == slot.key {
             present(stored)
@@ -73,10 +62,8 @@ final class DailyNewsViewModel {
     }
 
     /// 按分类键取对应条目（TabView 分页直接使用，不依赖当前选中状态）。
-    func events(for categoryKey: String) -> [RemoShuangToday.Event] {
-        guard let payload else { return [] }
-        if categoryKey == Self.topCategoryKey { return payload.top }
-        return payload.sections.first { $0.key == categoryKey }?.items ?? []
+    func events(for categoryKey: String) -> [RemoShuangHot.Entry] {
+        entriesByCategory[categoryKey] ?? []
     }
 
     // MARK: - 抓取
@@ -85,17 +72,25 @@ final class DailyNewsViewModel {
         isGenerating = true
         defer { isGenerating = false }
         do {
-            let fetched = try await service.fetchToday()
-            let digest = DailyNewsWebDigest(
+            let sources = try await service.fetchHot()
+            let labels = RemoShuangHot.categoryLabels(of: sources)
+            var entries: [String: [RemoShuangHot.Entry]] = [
+                Self.combinedKey: RemoShuangHot.entries(from: sources, categoryLabel: nil)
+            ]
+            for label in labels {
+                entries[label] = RemoShuangHot.entries(from: sources, categoryLabel: label)
+            }
+            let digest = DailyNewsDigest(
                 slotKey: slot.key,
                 slotName: slot.name,
                 fetchedAt: now,
-                payload: fetched
+                labels: labels,
+                entries: entries
             )
             saveDigest(digest)
             present(digest)
             if events.isEmpty {
-                emptyMessage = "今日大事暂时没有内容，下个时段再来看看。"
+                emptyMessage = "本小时热榜暂时没有内容，下个时段再来看看。"
             }
         } catch {
             // 抓取失败：有旧缓存就继续展示，否则提示
@@ -109,53 +104,44 @@ final class DailyNewsViewModel {
 
     // MARK: - 展示
 
-    private func present(_ digest: DailyNewsWebDigest) {
-        payload = digest.payload
+    private func present(_ digest: DailyNewsDigest) {
         slotName = digest.slotName
         fetchedAt = digest.fetchedAt
-        categories = [Category(key: Self.topCategoryKey, label: "今日大事")]
-            + digest.payload.sections.map { Category(key: $0.key, label: $0.label) }
+        entriesByCategory = digest.entries
+        categories = [Category(key: Self.combinedKey, label: "综合")]
+            + digest.labels.map { Category(key: $0, label: $0) }
         // 当前选中的分类在新数据里不存在时回到默认
         if !categories.contains(where: { $0.key == selectedCategoryKey }) {
-            selectedCategoryKey = Self.topCategoryKey
+            selectedCategoryKey = Self.combinedKey
         }
         applySelection()
     }
 
     func applySelection() {
-        guard let payload else {
-            events = []
-            return
-        }
-        if selectedCategoryKey == Self.topCategoryKey {
-            events = payload.top
-        } else {
-            events = payload.sections
-                .first(where: { $0.key == selectedCategoryKey })?
-                .items ?? []
-        }
+        events = entriesByCategory[selectedCategoryKey] ?? []
     }
 
     // MARK: - 持久化
 
-    /// 只保存最近一份；slotKey 用于判断"当天该时段是否已抓取过"。
-    private struct DailyNewsWebDigest: Codable {
+    /// 只保存最近一份；slotKey 用于判断"本小时是否已抓取过"。
+    private struct DailyNewsDigest: Codable {
         var slotKey: String
         var slotName: String
         var fetchedAt: Date
-        var payload: RemoShuangToday
+        var labels: [String]
+        var entries: [String: [RemoShuangHot.Entry]]
     }
 
-    private static let defaultsKey = "dailyNews.webLatest.v1"
+    private static let defaultsKey = "dailyNews.hotLatest.v1"
 
-    private func storedDigest() -> DailyNewsWebDigest? {
+    private func storedDigest() -> DailyNewsDigest? {
         guard let data = UserDefaults.standard.data(forKey: Self.defaultsKey) else {
             return nil
         }
-        return try? JSONDecoder().decode(DailyNewsWebDigest.self, from: data)
+        return try? JSONDecoder().decode(DailyNewsDigest.self, from: data)
     }
 
-    private func saveDigest(_ digest: DailyNewsWebDigest) {
+    private func saveDigest(_ digest: DailyNewsDigest) {
         if let data = try? JSONEncoder().encode(digest) {
             UserDefaults.standard.set(data, forKey: Self.defaultsKey)
         }
