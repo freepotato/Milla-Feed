@@ -14,6 +14,8 @@ import MillaCore
 struct HTMLTextView: UIViewRepresentable {
 
     let html: String
+    /// 点击正文中保留的链接（如末尾"查看全文"）时回调，由外层决定如何打开。
+    var onOpenLink: ((URL) -> Void)? = nil
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -25,7 +27,8 @@ struct HTMLTextView: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = 0
         textView.textContainer.widthTracksTextView = true
         textView.adjustsFontForContentSizeCategory = true
-        textView.dataDetectorTypes = [] // 正文不可点链接
+        textView.dataDetectorTypes = [] // 只响应显式保留的 <a> 链接
+        textView.delegate = context.coordinator
         return textView
     }
 
@@ -53,8 +56,19 @@ struct HTMLTextView: UIViewRepresentable {
     }
 
     /// 跟踪最新一次渲染请求：异步解析完成时若已有更新的请求，直接丢弃结果。
-    final class Coordinator {
+    final class Coordinator: NSObject, UITextViewDelegate {
         var generation = 0
+        var onOpenLink: ((URL) -> Void)?
+
+        func textView(
+            _ textView: UITextView,
+            shouldInteractWith url: URL,
+            in characterRange: NSRange,
+            interaction: UITextItemInteraction
+        ) -> Bool {
+            onOpenLink?(url)
+            return false
+        }
     }
 
     /// NSAttributedString 是不可变对象，后台解析完成后跨线程读取是安全的；
@@ -66,6 +80,7 @@ struct HTMLTextView: UIViewRepresentable {
     func updateUIView(_ textView: UITextView, context: Context) {
         context.coordinator.generation += 1
         let generation = context.coordinator.generation
+        context.coordinator.onOpenLink = onOpenLink
 
         let body = html.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty, let data = Self.readerDocument(body).data(using: .utf8) else {
@@ -103,9 +118,17 @@ struct HTMLTextView: UIViewRepresentable {
         ) else { return nil }
 
         let fullRange = NSRange(location: 0, length: attributed.length)
-        // 剥离全部超链接属性（净化器已去 <a>，此处兜底处理内联 URL 等）
-        attributed.enumerateAttribute(.link, in: fullRange) { _, range, _ in
-            attributed.removeAttribute(.link, range: range)
+        // 剥离超链接属性，但保留"查看全文/阅读原文"链接（净化器在末尾特意留下的原文入口）
+        attributed.enumerateAttribute(.link, in: fullRange) { value, range, _ in
+            guard value != nil else { return }
+            let text = (attributed.string as NSString).substring(with: range)
+            let isReadMore = text.range(
+                of: "查看全文|阅读原文|阅读全文",
+                options: .regularExpression
+            ) != nil
+            if !isReadMore {
+                attributed.removeAttribute(.link, range: range)
+            }
         }
         // HTML 解析器会给文字写死颜色（深色模式下黑底黑字），
         // 统一替换为动态 label 色。
@@ -145,7 +168,7 @@ struct HTMLTextView: UIViewRepresentable {
         body { font-family: -apple-system; font-size: 17px; line-height: 1.65;
                margin: 0; padding: 0; word-wrap: break-word; }
         img, video { max-width: 100%; height: auto; border-radius: 10px; }
-        a { color: inherit; text-decoration: none; }
+        a { color: #6C5CE7; text-decoration: none; font-weight: 600; }
         h1 { font-size: 24px; } h2 { font-size: 21px; } h3 { font-size: 18px; }
         h1, h2, h3, h4 { line-height: 1.3; margin: 18px 0 8px; }
         p { margin: 0 0 12px; }

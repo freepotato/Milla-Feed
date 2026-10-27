@@ -7,7 +7,8 @@ import Foundation
 /// 1. HTML 注释与 script/style/svg/iframe/form/button 等非正文元素；
 /// 2. class/id 命中导航、分享、页脚等特征词的元素块（按嵌套深度整块删除）；
 /// 3. Hacker News 样板段落；
-/// 4. 全部 `<a>` 超链接（保留链接文字——产品要求正文不可点）；
+/// 4. 全部 `<a>` 超链接（保留链接文字——正文不可点），
+///    但末尾的"查看全文/阅读原文"链接除外（它是原文入口，保留且可点）；
 /// 5. 开头导航残渣与结尾的链接列表/短尾巴块；
 /// 6. 清洗后遗留的空块。
 ///
@@ -25,7 +26,7 @@ public enum ContentSanitizer {
         out = removeBoilerplateParagraphs(out)
         out = removeJunkClassedElements(out)
         out = removeUnwantedElements(out)
-        out = unwrapAnchors(out)
+        out = unwrapAnchorsPreservingReadMore(out)
         out = dedupeRepeatedIntro(out)
         out = trimLeadingJunk(out)
         out = trimTrailingJunk(out)
@@ -98,9 +99,24 @@ public enum ContentSanitizer {
         return mapMatches(out, pattern: "(?i)<input\\b[^>]*>") { _, _ in .text("") }
     }
 
-    /// 删除全部 <a> 标签，仅保留链接文字。
-    private static func unwrapAnchors(_ html: String) -> String {
-        mapMatches(html, pattern: "(?i)</?a\\b[^>]*>") { _, _ in .text("") }
+    /// 删除全部 <a> 标签，仅保留内部内容（可能是文字，也可能是 <img>）；
+    /// 例外：末尾的"查看全文 / 阅读原文"链接（文本 ≤ 12 字、位于最后 120 个字符内）
+    /// 保留原标签——它是原文入口，需要可点。
+    private static func unwrapAnchorsPreservingReadMore(_ html: String) -> String {
+        mapMatches(html, pattern: "(?is)<a\\b[^>]*>([\\s\\S]*?)</a>") { match, range in
+            let inner = match
+                .replacingOccurrences(
+                    of: "(?is)^<a\\b[^>]*>|</a>$", with: "", options: .regularExpression
+                )
+            let text = HTMLText.plainText(from: String(match), maximumLength: 100)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let isReadMore = text.range(
+                of: "查看全文|阅读原文|阅读全文",
+                options: .regularExpression
+            ) != nil && text.count <= 12
+            let nearEnd = html.distance(from: range.upperBound, to: html.endIndex) <= 120
+            return (isReadMore && nearEnd) ? .keep : .text(String(inner))
+        }
     }
 
     /// 重复导入语去除：部分源（如虎嗅）正文开头先放一段"编者导入语"，
@@ -256,7 +272,12 @@ public enum ContentSanitizer {
                 let shortNoImage = visible.count <= 60 &&
                     block.range(of: "<img", options: .caseInsensitive) == nil
                 let keywordHit = visible.range(of: junkWords, options: .regularExpression) != nil
-                if shortNoImage || keywordHit {
+                // 末尾"查看全文/阅读原文"链接是特意保留的原文入口，不当短尾巴修剪
+                let readMoreKept = block.range(of: "<a\\b", options: .regularExpression) != nil &&
+                    visible.range(
+                        of: "查看全文|阅读原文|阅读全文", options: .regularExpression
+                    ) != nil
+                if (shortNoImage || keywordHit) && !readMoreKept {
                     didReplace = true
                     return .text("")
                 }

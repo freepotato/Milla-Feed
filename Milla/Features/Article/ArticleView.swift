@@ -11,6 +11,7 @@ struct ArticleView: View {
 
     @State private var viewModel: ArticleViewModel
     @State private var showsSafari = false
+    @State private var bodyLink: URL?
 
     init(ranked: RankedFeedItem) {
         self.ranked = ranked
@@ -50,7 +51,8 @@ struct ArticleView: View {
                         html: ContentSanitizer.removingImage(
                             from: ranked.item.contentHTML,
                             matching: ranked.item.imageURL
-                        )
+                        ),
+                        onOpenLink: { bodyLink = $0 }
                     )
                 } else if !ranked.item.summary.isEmpty {
                     Text(ranked.item.summary)
@@ -91,6 +93,15 @@ struct ArticleView: View {
         }
         .sheet(isPresented: $showsSafari) {
             if let url = ranked.item.link {
+                SafariView(url: url)
+            }
+        }
+        // 正文中保留的"查看全文"链接，同样用内置 Safari 打开
+        .sheet(isPresented: Binding(
+            get: { bodyLink != nil },
+            set: { if !$0 { bodyLink = nil } }
+        )) {
+            if let url = bodyLink {
                 SafariView(url: url)
             }
         }
