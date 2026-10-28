@@ -11,7 +11,7 @@ struct ChangelogView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    ForEach(entries) { entry in
+                    ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 Text("v\(entry.version)")
@@ -23,8 +23,8 @@ struct ChangelogView: View {
                                         .foregroundStyle(AppColors.tertiaryText)
                                 }
                                 Spacer()
-                                if entry.version == ChangelogDocument.currentVersion {
-                                    Text("当前版本")
+                                if index == 0 {
+                                    Text("最新版本")
                                         .font(.caption2.weight(.medium))
                                         .foregroundStyle(AppColors.brand)
                                         .padding(.horizontal, 8)
@@ -76,10 +76,6 @@ private struct ChangelogDocument {
         let date: String
         let items: [String]
         var id: String { version }
-    }
-
-    static var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
     }
 
     static func load() -> [Entry] {
