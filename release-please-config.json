@@ -8,7 +8,14 @@
   "changelog-path": "CHANGELOG.md",
   "packages": {
     ".": {
-      "package-name": "Milla"
+      "package-name": "Milla",
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "project.yml",
+          "jsonpath": "$.settings.base.MARKETING_VERSION"
+        }
+      ]
     }
   }
 }
