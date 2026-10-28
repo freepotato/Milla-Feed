@@ -41,7 +41,9 @@ final class DailyNewsViewModel {
     // MARK: - 加载
 
     /// 进入页面时调用：本小时已抓过直接展示，否则抓取。
+    /// 可被"切 Tab / 回前台 / 从设置返回"多次触发，内部做幂等。
     func loadIfNeeded() async {
+        guard !isGenerating else { return }
         emptyMessage = nil
         let now = Date()
         let slot = DailyNews.hourlySlot(now: now)

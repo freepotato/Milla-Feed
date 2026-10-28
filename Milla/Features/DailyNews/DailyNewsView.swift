@@ -5,10 +5,13 @@ import MillaCore
 /// 每日新闻页：热摸爽主页热榜，默认综合，可左右滑动切换大类；每小时抓取一次。
 struct DailyNewsView: View {
 
+    /// 新闻 Tab 当前是否被选中（Tab 常驻内存，靠它感知重新打开）。
+    let isActive: Bool
     let onTapSettings: () -> Void
 
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var viewModel = DailyNewsViewModel()
-    @State private var didLoad = false
     @State private var selectedEvent: RemoShuangHot.Entry?
 
     var body: some View {
@@ -31,9 +34,22 @@ struct DailyNewsView: View {
         }
         .background(AppColors.screenBackground)
         .task {
-            guard !didLoad else { return }
-            didLoad = true
+            // 首次进入
             await viewModel.loadIfNeeded()
+        }
+        .onChange(of: isActive) { _, active in
+            // 从信息流切回新闻 Tab：立即按小时规则检查是否该刷新
+            guard active else { return }
+            Task { await viewModel.loadIfNeeded() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // 从后台回到前台（含隔夜再打开）
+            guard phase == .active, isActive else { return }
+            Task { await viewModel.loadIfNeeded() }
+        }
+        .onAppear {
+            // 从本 Tab 内的设置页返回时也检查一次
+            Task { await viewModel.loadIfNeeded() }
         }
         .sheet(item: $selectedEvent) { event in
             if let url = event.link {
