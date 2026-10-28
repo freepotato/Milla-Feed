@@ -10,6 +10,7 @@ struct SettingsView: View {
 
     @State private var viewModel = SettingsViewModel()
     @State private var didLoad = false
+    @State private var showsChangelog = false
 
     var body: some View {
         @Bindable var settings = settings
@@ -20,9 +21,13 @@ struct SettingsView: View {
             defaultValuesSection(settings: _settings)
             sourcesSection
             aboutSection
+            changelogSection
         }
         .navigationTitle("设置")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsChangelog) {
+            ChangelogView()
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -186,17 +191,23 @@ struct SettingsView: View {
                 Text(Self.appVersion)
                     .foregroundStyle(.secondary)
             }
-            HStack {
-                Text("最低系统")
-                Spacer()
-                Text("iOS 18")
-                    .foregroundStyle(.secondary)
+        }
+    }
+
+    private var changelogSection: some View {
+        Section {
+            Button {
+                showsChangelog = true
+            } label: {
+                HStack {
+                    Label("更新日志", systemImage: "clock.arrow.circlepath")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
             }
-            LabeledContent("核心算法") {
-                Text("MillaCore（纯 Swift，可跨平台测试）")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            .accessibilityLabel("查看更新日志")
         }
     }
 

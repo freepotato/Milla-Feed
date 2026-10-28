@@ -37,6 +37,9 @@ targets:
       - path: Milla
         excludes:
           - "Resources/Info.plist"
+      # 更新日志单一来源：docs/CHANGELOG.md 直接打包进 App，避免两份内容漂移
+      - path: docs/CHANGELOG.md
+        buildPhase: resources
     resources: []
     info:
       path: Milla/Resources/Info.plist
