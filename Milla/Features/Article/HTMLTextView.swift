@@ -60,14 +60,19 @@ struct HTMLTextView: UIViewRepresentable {
         var generation = 0
         var onOpenLink: ((URL) -> Void)?
 
+        /// iOS 17 起旧的 shouldInteractWith 已废弃，改用文字项的主操作回调。
+        /// 只接管链接：点击"查看全文"交给外层打开；非链接文字保持系统默认行为。
         func textView(
             _ textView: UITextView,
-            shouldInteractWith url: URL,
-            in characterRange: NSRange,
-            interaction: UITextItemInteraction
-        ) -> Bool {
-            onOpenLink?(url)
-            return false
+            primaryActionFor textItem: UITextItem,
+            defaultAction: UIAction
+        ) -> UIAction? {
+            guard case .link(let url) = textItem.content else {
+                return defaultAction
+            }
+            return UIAction { [weak self] _ in
+                self?.onOpenLink?(url)
+            }
         }
     }
 
