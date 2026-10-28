@@ -48,20 +48,20 @@ final class RemoShuangHotTests: XCTestCase {
         XCTAssertEqual(sources[0].items[0].rank, 1)
     }
 
-    func testCategoryLabelsInFirstSeenOrder() throws {
+    func testCategoryLabelsFollowSiteOrder() throws {
         let sources = try decodedSources()
-        XCTAssertEqual(RemoShuangHot.categoryLabels(of: sources), ["社区", "新闻"])
+        // 站点顺序里"新闻"在"社区"之前；"其他" 不作为导航分类出现
+        XCTAssertEqual(RemoShuangHot.categoryLabels(of: sources), ["新闻", "社区"])
     }
 
-    func testCombinedEntriesRoundRobinByRankThenHeat() throws {
+    func testCombinedEntriesSortedByHeat() throws {
         let sources = try decodedSources()
         let entries = RemoShuangHot.entries(from: sources, categoryLabel: nil)
 
-        // 第 1 轮（各来源 rank 1）：知乎(8000万) > 腾讯(44万) > 微博(无热度)
-        // 第 2 轮：只剩知乎 rank 2
+        // 综合榜与站点一致：全部来源合并后按热度降序
         XCTAssertEqual(
             entries.map(\.title),
-            ["知乎热一", "腾讯热一", "微博热一", "知乎热二"]
+            ["知乎热一", "知乎热二", "腾讯热一", "微博热一"]
         )
         XCTAssertEqual(entries[0].sourceName, "知乎")
         XCTAssertEqual(entries[0].link?.absoluteString, "https://www.zhihu.com/q/1")

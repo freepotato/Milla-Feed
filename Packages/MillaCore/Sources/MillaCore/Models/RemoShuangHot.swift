@@ -61,47 +61,61 @@ public enum RemoShuangHot {
         return try JSONDecoder().decode(Envelope.self, from: data).data
     }
 
-    /// 大类展示顺序：按来源首次出现的顺序去重。
+    /// 站点（remoshuang.com 首页 / 分类页）的分类顺序。
+    /// "其他" 是接口里的兜底分组，站点没有对应标签页，不进入分类导航。
+    public static let siteCategoryOrder = [
+        "科技", "AI", "财经", "新闻", "游戏", "娱乐", "社区", "发现机会",
+        "阅读", "知识", "生活", "编程", "体育", "外国媒体", "健康", "设计", "教育"
+    ]
+
+    /// 分类导航：按站点顺序排列，只保留接口实际出现的分类；
+    /// 接口新增了站点尚未列出顺序的分类时追加在末尾（"其他" 除外）。
     public static func categoryLabels(of sources: [Source]) -> [String] {
-        var seen = Set<String>()
-        return sources.compactMap { source in
-            guard !source.category.isEmpty, !seen.contains(source.category) else { return nil }
-            seen.insert(source.category)
-            return source.category
-        }
+        let present = Set(sources.map(\.category).filter { !$0.isEmpty })
+        let ordered = siteCategoryOrder.filter { present.contains($0) }
+        let extras = present
+            .subtracting(siteCategoryOrder)
+            .subtracting(["其他"])
+            .sorted()
+        return ordered + extras
     }
 
-    /// 组装一个分类（nil = 综合）的条目：
-    /// 按 rank 从 1 开始逐轮取各来源该名次的条目，同一轮内按热度降序。
-    /// 名次优先保证各来源头部内容排在前面；热度只作同轮内的排序参考。
+    /// 组装条目：
+    /// - `categoryLabel == nil` → 综合榜，全部来源合并后按热度降序（与站点榜单一致）；
+    /// - 指定分类 → 该分类下所有来源合并后按热度降序。
+    /// 热度相同按名次靠前者优先，再按来源名稳定排序。
     public static func entries(
         from sources: [Source],
         categoryLabel: String?,
         limit: Int = 50
     ) -> [Entry] {
-        let filtered = sources.filter {
-            !$0.items.isEmpty && (categoryLabel == nil || $0.category == categoryLabel)
+        let filtered = sources.filter { source in
+            guard !source.items.isEmpty else { return false }
+            return categoryLabel == nil || source.category == categoryLabel
         }
-        guard let maxCount = filtered.map({ $0.items.count }).max() else { return [] }
-        var result: [Entry] = []
-        for rankIndex in 0..<maxCount {
-            var round: [(source: Source, item: Item)] = []
-            for source in filtered where source.items.count > rankIndex {
-                round.append((source, source.items[rankIndex]))
-            }
-            round.sort { heatValue($0.item.heat) > heatValue($1.item.heat) }
-            for (source, item) in round {
-                result.append(Entry(
-                    id: "\(source.key)-r\(item.rank)",
-                    title: item.title,
-                    link: URL(string: item.url),
-                    heat: item.heat,
-                    sourceName: source.name
+
+        var pool: [(entry: Entry, heat: Double, rank: Int)] = []
+        for source in filtered {
+            for item in source.items {
+                pool.append((
+                    Entry(
+                        id: "\(source.key)-r\(item.rank)",
+                        title: item.title,
+                        link: URL(string: item.url),
+                        heat: item.heat,
+                        sourceName: source.name
+                    ),
+                    heatValue(item.heat),
+                    item.rank
                 ))
             }
-            if result.count >= limit { break }
         }
-        return Array(result.prefix(limit))
+        pool.sort { lhs, rhs in
+            if lhs.heat != rhs.heat { return lhs.heat > rhs.heat }
+            if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
+            return lhs.entry.id < rhs.entry.id
+        }
+        return Array(pool.prefix(limit).map(\.entry))
     }
 
     /// "17201 万热度" → 172_010_000；"241回复" → 241；空串/无数字 → 0。
