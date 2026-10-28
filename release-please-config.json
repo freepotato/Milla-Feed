@@ -11,9 +11,8 @@
       "package-name": "Milla",
       "extra-files": [
         {
-          "type": "yaml",
-          "path": "project.yml",
-          "jsonpath": "$.settings.base.MARKETING_VERSION"
+          "type": "generic",
+          "path": "project.yml"
         }
       ]
     }
