@@ -49,6 +49,16 @@ final class HomeViewModel {
         self.syncService = syncService
     }
 
+    // MARK: - 搜索
+
+    /// 本地检索（标题/摘要/作者，不区分大小写），结果按发布时间倒序。
+    /// 不影响时间线本身，仅用于横幅搜索框的结果展示。
+    func search(_ query: String, repository: FeedRepository) -> [RankedFeedItem] {
+        repository.searchItems(query: query).map {
+            RankedFeedItem(item: $0, sourceID: $0.sourceID, qualityScore: 0, recencyScore: 0, score: 0)
+        }
+    }
+
     // MARK: - 加载
 
     func load(

@@ -256,6 +256,32 @@ final class FeedRepository {
         fetchArticle(identifier: identifier)?.isFavorite ?? false
     }
 
+    /// 收藏的文章（收藏列表页），按发布时间倒序。
+    func favoriteItems() -> [FeedItem] {
+        let descriptor = FetchDescriptor<StoredFeedArticle>(
+            predicate: #Predicate<StoredFeedArticle> { $0.isFavorite == true },
+            sortBy: [SortDescriptor(\.publishedAt, order: .reverse)]
+        )
+        return ((try? context.fetch(descriptor)) ?? []).map { $0.makeCoreItem() }
+    }
+
+    /// 本地检索（标题/摘要/作者，不区分大小写），按发布时间倒序。
+    /// 内存过滤：文章总量有限，避免 SwiftData Predicate 对中文模糊匹配支持不稳。
+    func searchItems(query: String, limit: Int = 500) -> [FeedItem] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        var descriptor = FetchDescriptor<StoredFeedArticle>(
+            sortBy: [SortDescriptor(\.publishedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = limit
+        let articles = (try? context.fetch(descriptor)) ?? []
+        return articles.filter {
+            $0.title.localizedCaseInsensitiveContains(trimmed)
+                || $0.summary.localizedCaseInsensitiveContains(trimmed)
+                || ($0.author?.localizedCaseInsensitiveContains(trimmed) ?? false)
+        }.map { $0.makeCoreItem() }
+    }
+
     func fetchArticle(identifier: String) -> StoredFeedArticle? {
         var descriptor = FetchDescriptor<StoredFeedArticle>(
             predicate: #Predicate<StoredFeedArticle> { $0.identifier == identifier }

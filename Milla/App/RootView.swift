@@ -40,6 +40,8 @@ struct FeedTab: View {
                         SettingsView()
                     case .article(let ranked):
                         ArticleView(ranked: ranked)
+                    case .favorites:
+                        FavoritesListView()
                     }
                 }
         }

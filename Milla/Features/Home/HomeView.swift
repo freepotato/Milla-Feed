@@ -9,15 +9,27 @@ struct HomeView: View {
 
     @State private var viewModel = HomeViewModel()
     @State private var didInitialLoad = false
+    @State private var searchText = ""
+
+    /// 正在搜索：展示结果列表，替换信息流。
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: AppSpacing.stackVertical) {
-                TopBannerView(onTapSettings: {
-                    router.path.append(Route.settings)
-                })
+                TopBannerView(
+                    searchText: $searchText,
+                    onTapFavorites: { router.path.append(.favorites) },
+                    onTapSettings: { router.path.append(Route.settings) }
+                )
 
-                feedContent
+                if isSearching {
+                    searchResultsBlock
+                } else {
+                    feedContent
+                }
             }
             .padding(.bottom, 24)
         }
@@ -83,6 +95,33 @@ struct HomeView: View {
     }
 
     // MARK: - Subviews
+
+    private var searchResultsBlock: some View {
+        let results = viewModel.search(searchText, repository: repository)
+        return Group {
+            if results.isEmpty {
+                EmptyStateView(
+                    systemImage: "magnifyingglass",
+                    title: "没有找到相关文章",
+                    message: "换个关键词试试。"
+                ) {}
+                .padding(.top, 60)
+            } else {
+                ForEach(results) { ranked in
+                    Button {
+                        router.path.append(Route.article(ranked))
+                    } label: {
+                        FeedCardView(
+                            ranked: ranked,
+                            sourceTitle: viewModel.sourceTitles[ranked.sourceID] ?? "未知来源",
+                            isRead: viewModel.readIDs.contains(ranked.id)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
 
     private var loadingBlock: some View {
         VStack(spacing: 12) {

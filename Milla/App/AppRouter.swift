@@ -13,4 +13,5 @@ final class AppRouter {
 enum Route: Hashable {
     case settings
     case article(RankedFeedItem)
+    case favorites
 }
