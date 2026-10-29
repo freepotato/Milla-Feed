@@ -11,11 +11,6 @@ struct HomeView: View {
     @State private var didInitialLoad = false
     @State private var searchText = ""
 
-    // 可拖动的右侧滚动条（系统滚动指示器只能看不能按）
-    @State private var scrollPosition = ScrollPosition(edge: .top)
-    @State private var scrollMetrics = ScrollMetrics()
-    @State private var isDraggingScrollBar = false
-
     /// 正在搜索：展示结果列表，替换信息流。
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -37,20 +32,6 @@ struct HomeView: View {
                 }
             }
             .padding(.bottom, 24)
-        }
-        .scrollIndicators(.hidden)
-        .scrollPosition($scrollPosition)
-        .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
-            ScrollMetrics(
-                offsetY: max(0, geometry.contentOffset.y + geometry.contentInsets.top),
-                contentHeight: geometry.contentSize.height,
-                visibleHeight: geometry.containerSize.height
-            )
-        } action: { _, newValue in
-            scrollMetrics = newValue
-        }
-        .overlay(alignment: .trailing) {
-            draggableScrollBar
         }
         .background(AppColors.screenBackground)
         .millaAdaptiveChrome()
@@ -76,55 +57,6 @@ struct HomeView: View {
             if didInitialLoad {
                 viewModel.rebuild(repository: repository, settings: settings)
             }
-        }
-    }
-
-    // MARK: - 可拖动滚动条
-
-    /// 覆盖在 ScrollView 右侧的滚动条：按住拖动可直接跳到任意位置。
-    @ViewBuilder
-    private var draggableScrollBar: some View {
-        let maxOffset = max(1, scrollMetrics.contentHeight - scrollMetrics.visibleHeight)
-        if scrollMetrics.contentHeight > scrollMetrics.visibleHeight + 60 {
-            GeometryReader { proxy in
-                let trackInset: CGFloat = 8
-                let trackHeight = max(1, proxy.size.height - trackInset * 2)
-                let thumbHeight = min(
-                    trackHeight,
-                    max(48, trackHeight * scrollMetrics.visibleHeight / scrollMetrics.contentHeight)
-                )
-                let travel = max(1, trackHeight - thumbHeight)
-                let progress = min(1, max(0, scrollMetrics.offsetY / maxOffset))
-
-                ZStack(alignment: .top) {
-                    Color.clear
-                    Capsule()
-                        .fill(Color.primary.opacity(isDraggingScrollBar ? 0.5 : 0.2))
-                        .frame(
-                            width: isDraggingScrollBar ? 6 : 4,
-                            height: thumbHeight
-                        )
-                        .offset(y: travel * progress)
-                }
-                .frame(width: 24, height: trackHeight)
-                .contentShape(Rectangle())
-                .highPriorityGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            // 按住即把滑块中心对到手指位置，拖动时按位置映射滚动
-                            if !isDraggingScrollBar { isDraggingScrollBar = true }
-                            let thumbTop = value.location.y - thumbHeight / 2
-                            let dragProgress = min(1, max(0, thumbTop / travel))
-                            scrollPosition.scrollTo(y: dragProgress * maxOffset)
-                        }
-                        .onEnded { _ in
-                            isDraggingScrollBar = false
-                        }
-                )
-                .offset(y: trackInset)
-                .accessibilityHidden(true)
-            }
-            .frame(width: 24)
         }
     }
 
@@ -227,13 +159,6 @@ struct HomeView: View {
             .clipShape(Capsule())
             .padding(.horizontal, AppSpacing.screenHorizontal)
     }
-}
-
-/// 滚动几何快照：驱动自定义滚动条的位置与高度。
-private struct ScrollMetrics: Equatable {
-    var offsetY: CGFloat = 0
-    var contentHeight: CGFloat = 0
-    var visibleHeight: CGFloat = 0
 }
 
 #Preview("首页") {
