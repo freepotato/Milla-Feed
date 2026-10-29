@@ -243,8 +243,13 @@ struct SettingsView: View {
         }
     }
 
+    /// 优先使用随包的更新日志里的最新版本号，保证设置页与发版记录一致；
+    /// 更新日志缺失时回退到 Info.plist 的版本号。
     static var appVersion: String {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
+        let changelogVersion = ChangelogDocument.latestVersion
+        let version = changelogVersion.isEmpty
+            ? (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0")
+            : changelogVersion
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(version) (\(build))"
     }

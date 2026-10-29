@@ -5,7 +5,7 @@ struct ChangelogView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private let entries = ChangelogDocument.load()
+    private let entries = ChangelogDocument.all
 
     var body: some View {
         NavigationStack {
@@ -69,13 +69,21 @@ struct ChangelogView: View {
 
 // MARK: - 文档解析
 
-private struct ChangelogDocument {
+struct ChangelogDocument {
 
     struct Entry: Identifiable {
         let version: String
         let date: String
         let items: [String]
         var id: String { version }
+    }
+
+    /// 只解析一次，避免每次渲染设置页都读磁盘。
+    static let all: [Entry] = load()
+
+    /// 更新日志里的最新版本号：设置页展示版本时使用，保证与发版记录一致。
+    static var latestVersion: String {
+        all.first?.version ?? ""
     }
 
     static func load() -> [Entry] {
