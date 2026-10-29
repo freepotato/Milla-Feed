@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 import MillaCore
 
-/// 每日新闻页：热摸爽主页热榜，默认综合，可左右滑动切换大类；每小时抓取一次。
+/// 每日新闻页：热摸爽首页榜单（综合 = 头条下方从 1 开始的完整列表），
+/// 「正在升温」只在综合页展示；每次打开都在后台刷新，先展示缓存。
 struct DailyNewsView: View {
 
     /// 新闻 Tab 当前是否被选中（Tab 常驻内存，靠它感知重新打开）。
@@ -12,7 +13,8 @@ struct DailyNewsView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel = DailyNewsViewModel()
-    @State private var selectedEvent: RemoShuangHot.Entry?
+    @State private var selectedLink: SafariLink?
+    @State private var hasLoaded = false
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -20,7 +22,7 @@ struct DailyNewsView: View {
             header
             categoryChips
 
-            if viewModel.isGenerating {
+            if viewModel.categories.isEmpty, viewModel.isRefreshing {
                 generatingBlock
             } else if viewModel.categories.isEmpty, let message = viewModel.emptyMessage {
                 EmptyStateView(
@@ -30,31 +32,30 @@ struct DailyNewsView: View {
                 ) {}
             } else {
                 pagedCategories
+                    .animation(.easeInOut(duration: 0.28), value: viewModel.dataVersion)
             }
         }
         .background(AppColors.screenBackground)
         .task {
-            // 首次进入
-            await viewModel.loadIfNeeded()
+            // 首次进入：先展示缓存，再后台刷新
+            await viewModel.load()
+            hasLoaded = true
         }
         .onChange(of: isActive) { _, active in
-            // 从信息流切回新闻 Tab：立即按小时规则检查是否该刷新
             guard active else { return }
-            Task { await viewModel.loadIfNeeded() }
+            Task { await viewModel.refresh() }
         }
         .onChange(of: scenePhase) { _, phase in
-            // 从后台回到前台（含隔夜再打开）
             guard phase == .active, isActive else { return }
-            Task { await viewModel.loadIfNeeded() }
+            Task { await viewModel.refresh() }
         }
         .onAppear {
-            // 从本 Tab 内的设置页返回时也检查一次
-            Task { await viewModel.loadIfNeeded() }
+            // 从本 Tab 内的设置页 / 文章返回时也刷新
+            guard hasLoaded else { return }
+            Task { await viewModel.refresh() }
         }
-        .sheet(item: $selectedEvent) { event in
-            if let url = event.link {
-                SafariView(url: url)
-            }
+        .sheet(item: $selectedLink) { link in
+            SafariView(url: link.url)
         }
     }
 
@@ -65,17 +66,12 @@ struct DailyNewsView: View {
             Text("每日新闻")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(AppColors.primaryText)
-            if !viewModel.slotName.isEmpty {
-                Text(viewModel.slotName)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(AppColors.brand)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(AppColors.brand.opacity(0.12))
-                    .clipShape(Capsule())
-            }
             Spacer()
-            if let fetchedAt = viewModel.fetchedAt {
+            if viewModel.isRefreshing {
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(.trailing, 2)
+            } else if let fetchedAt = viewModel.fetchedAt {
                 Text(DateFormatting.relativeText(from: fetchedAt) + "更新")
                     .font(.caption)
                     .foregroundStyle(AppColors.tertiaryText)
@@ -139,28 +135,39 @@ struct DailyNewsView: View {
             ForEach(viewModel.categories) { category in
                 CategoryEntriesPage(
                     events: viewModel.events(for: category.key),
-                    onSelect: { selectedEvent = $0 }
+                    rising: category.key == DailyNewsViewModel.combinedKey
+                        ? viewModel.rising
+                        : [],
+                    onSelect: { url in selectedLink = SafariLink(url: url) }
                 )
                 .tag(category.key)
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
-        .onChange(of: viewModel.selectedCategoryKey) { _, _ in
-            viewModel.applySelection()
-        }
     }
+}
+
+// MARK: - Safari 链接
+
+private struct SafariLink: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
 }
 
 // MARK: - 单分类条目页
 
 private struct CategoryEntriesPage: View {
 
-    let events: [RemoShuangHot.Entry]
-    let onSelect: (RemoShuangHot.Entry) -> Void
+    let events: [RemoShuangRanked.Entry]
+    let rising: [RemoShuangRanked.Rising]
+    let onSelect: (URL) -> Void
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: AppSpacing.stackVertical) {
+                if !rising.isEmpty {
+                    risingCard
+                }
                 ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
                     eventRow(event, index: index)
                 }
@@ -169,9 +176,104 @@ private struct CategoryEntriesPage: View {
         }
     }
 
-    private func eventRow(_ event: RemoShuangHot.Entry, index: Int) -> some View {
+    // MARK: 正在升温
+
+    private var risingCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "flame.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                Text("正在升温")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppColors.primaryText)
+                Spacer()
+                Text("\(rising.count) 条")
+                    .font(.caption2)
+                    .foregroundStyle(AppColors.tertiaryText)
+            }
+            .padding(.horizontal, AppSpacing.cardInner)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+
+            ForEach(Array(rising.enumerated()), id: \.element.id) { index, item in
+                if index > 0 {
+                    Divider()
+                        .padding(.leading, AppSpacing.cardInner + 20)
+                }
+                Button {
+                    if let url = item.link { onSelect(url) }
+                } label: {
+                    risingRow(item, index: index)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: AppSpacing.cornerRadius, style: .continuous)
+                .fill(AppColors.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppSpacing.cornerRadius, style: .continuous)
+                        .fill(Color.orange.opacity(0.07))
+                )
+        )
+        .padding(.horizontal, AppSpacing.screenHorizontal)
+    }
+
+    private func risingRow(_ item: RemoShuangRanked.Rising, index: Int) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("\(index + 1)")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.orange)
+                .frame(width: 20)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.title)
+                    .font(.body)
+                    .foregroundStyle(AppColors.primaryText)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .contextMenu {
+                        Button("复制标题", systemImage: "doc.on.doc") {
+                            UIPasteboard.general.string = item.title
+                        }
+                    }
+
+                HStack(spacing: 8) {
+                    Text("↑ \(item.risePercent)%")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.orange)
+                    Text("\(item.sourceCount) 来源")
+                        .font(.caption)
+                        .foregroundStyle(AppColors.tertiaryText)
+                    if item.newSources > 0 {
+                        Text("新增 \(item.newSources) 个")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                    if let date = item.firstSeenDate {
+                        Text(DateFormatting.relativeText(from: date) + "首次出现")
+                            .font(.caption)
+                            .foregroundStyle(AppColors.tertiaryText)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, AppSpacing.cardInner)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityLabel("正在升温：\(item.title)")
+    }
+
+    // MARK: 榜单条目
+
+    private func eventRow(_ event: RemoShuangRanked.Entry, index: Int) -> some View {
         Button {
-            onSelect(event)
+            if let url = event.link { onSelect(url) }
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 Text("\(index + 1)")
@@ -197,7 +299,7 @@ private struct CategoryEntriesPage: View {
                             }
                         }
                     HStack(spacing: 6) {
-                        Text(event.sourceName)
+                        Text(sourceText(event))
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundStyle(AppColors.brand)
@@ -225,5 +327,12 @@ private struct CategoryEntriesPage: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("第 \(index + 1) 条：\(event.title)")
+    }
+
+    /// "东方财富 等 6 个来源"
+    private func sourceText(_ event: RemoShuangRanked.Entry) -> String {
+        event.sourceCount > 1
+            ? "\(event.sourceName) 等 \(event.sourceCount) 个来源"
+            : event.sourceName
     }
 }
