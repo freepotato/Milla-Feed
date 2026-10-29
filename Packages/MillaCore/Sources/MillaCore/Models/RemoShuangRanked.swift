@@ -121,7 +121,9 @@ public enum RemoShuangRanked {
             .sorted { $0.position < $1.position }
             .map { item in
                 Entry(
-                    id: item.id,
+                    // 接口的 id 是榜单快照标识（如 "r1"），会跨条目重复，
+                    // 叠加 position 才能保证 ForEach 的 id 唯一。
+                    id: "\(item.id)#\(item.position)",
                     title: item.title,
                     link: item.link,
                     heat: item.heatLabel,

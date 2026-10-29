@@ -32,7 +32,6 @@ struct DailyNewsView: View {
                 ) {}
             } else {
                 pagedCategories
-                    .animation(.easeInOut(duration: 0.28), value: viewModel.dataVersion)
             }
         }
         .background(AppColors.screenBackground)

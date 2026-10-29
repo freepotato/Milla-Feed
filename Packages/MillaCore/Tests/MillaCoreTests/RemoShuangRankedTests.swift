@@ -79,6 +79,26 @@ final class RemoShuangRankedTests: XCTestCase {
         XCTAssertEqual(entries[0].link?.absoluteString, "https://example.com/1")
     }
 
+    /// 接口的 id 是榜单快照标识（如 "r1"），会跨条目重复；
+    /// Entry.id 必须唯一，否则列表会吞掉部分行。
+    func testEntryIDsStayUniqueWhenAPIRepeatsIDs() {
+        let items = [
+            RemoShuangRanked.Item(
+                position: 1, id: "r1", title: "甲", url: "https://example.com/1",
+                sourceName: "来源", sourceCategory: "科技", heatValue: 1,
+                heatLabel: "1 万热度", sources: []
+            ),
+            RemoShuangRanked.Item(
+                position: 2, id: "r1", title: "乙", url: "https://example.com/2",
+                sourceName: "来源", sourceCategory: "财经", heatValue: 2,
+                heatLabel: "2 万热度", sources: []
+            ),
+        ]
+        let entries = RemoShuangRanked.entries(from: items, category: nil)
+        XCTAssertEqual(entries.map(\.title), ["甲", "乙"])
+        XCTAssertEqual(Set(entries.map(\.id)).count, 2)
+    }
+
     /// 分类页保留原顺序（position 3 的科技条目单独成页）。
     func testCategoryFilterKeepsSequence() throws {
         let items = try decodedPage().items

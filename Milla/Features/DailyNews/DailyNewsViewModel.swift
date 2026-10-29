@@ -5,7 +5,7 @@ import MillaCore
 /// 每日新闻：数据源为热摸爽首页榜单与「正在升温」。
 ///
 /// 刷新规则（产品要求）：每次打开页面都在后台抓取一次，先展示本地缓存保证
-/// 可立即浏览，抓取完成后只在内容有变化时带动画替换；切分类只看缓存。
+/// 可立即浏览，抓取完成后直接替换前台内容。
 @MainActor
 @Observable
 final class DailyNewsViewModel {
@@ -24,8 +24,6 @@ final class DailyNewsViewModel {
     private(set) var fetchedAt: Date?
     private(set) var emptyMessage: String?
     private(set) var rising: [RemoShuangRanked.Rising] = []
-    /// 每次后台数据真正变化时 +1，视图据此决定是否播放替换动画。
-    private(set) var dataVersion = 0
     var selectedCategoryKey = DailyNewsViewModel.combinedKey
     var isRefreshing = false
 
@@ -95,7 +93,6 @@ final class DailyNewsViewModel {
             entries[label] = RemoShuangRanked.entries(from: items, category: label)
         }
 
-        let changed = entries != entriesByCategory || newRising != rising
         entriesByCategory = entries
         rising = newRising
         categories = [Category(key: Self.combinedKey, label: "综合")]
@@ -104,9 +101,6 @@ final class DailyNewsViewModel {
         // 当前选中的分类在新数据里不存在时回到综合
         if !categories.contains(where: { $0.key == selectedCategoryKey }) {
             selectedCategoryKey = Self.combinedKey
-        }
-        if changed {
-            dataVersion += 1
         }
         if persist {
             saveDigest()
@@ -125,7 +119,7 @@ final class DailyNewsViewModel {
         var rising: [RemoShuangRanked.Rising]
     }
 
-    private static let defaultsKey = "dailyNews.rankedLatest.v2"
+    private static let defaultsKey = "dailyNews.rankedLatest.v3"
 
     private func presentStored() {
         guard categories.isEmpty, let digest = storedDigest() else { return }
