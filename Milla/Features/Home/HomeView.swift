@@ -38,6 +38,7 @@ struct HomeView: View {
             }
             .padding(.bottom, 24)
         }
+        .scrollIndicators(.hidden)
         .scrollPosition($scrollPosition)
         .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
             ScrollMetrics(
