@@ -1,0 +1,22 @@
+name: perm-probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe release creation
+        run: |
+          code=$(curl -s -o /tmp/resp.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: token ${{ github.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/freepotato/Milla-Feed/releases \
+            -d '{"tag_name":"probe-permission","name":"probe-permission","draft":true,"body":"temporary"}')
+          echo "HTTP $code"
+          cat /tmp/resp.json
