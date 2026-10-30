@@ -1,68 +1,25 @@
 name: release-please
 
-# 发版流程（手动控制版本号变化）：
-# 1. 日常改动只记录到 docs/UNRELEASED.md，不会升版本；
-# 2. 准备发版时手动运行本工作流（mode=prepare），由 release-please 生成 Release PR；
-# 3. 在 GitHub 上合并 Release PR 后，push 事件会自动按 manifest 打 tag、创建 Release；
-#    若该步骤没有触发或失败，可手动运行本工作流（mode=finalize）补发。
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: "prepare = 生成 Release PR；finalize = 为已合并的 Release PR 打 tag 并发 Release"
-        type: choice
-        options:
-          - prepare
-          - finalize
-        default: prepare
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  # 合并 Release PR 后收尾（只对 release 合并提交生效，日常 push 不会跑）
-  # 用 gh 直接发 Release：Release 说明取自 docs/CHANGELOG.md 中对应版本的内容
-  finalize:
-    if: >-
-      (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore(main): release '))
-      || (github.event_name == 'workflow_dispatch' && inputs.mode == 'finalize')
+  release-please:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Publish GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          VERSION=$(jq -r '.["."]' .release-please-manifest.json)
-          TAG="v$VERSION"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "$TAG already published"
-            exit 0
-          fi
-          NOTES=$(awk -v ver="$VERSION" '
-            index($0, "## " ver " ") == 1 { found = 1; next }
-            found && index($0, "## ") == 1 { exit }
-            found { print }
-          ' docs/CHANGELOG.md)
-          if [ -z "$(printf '%s' "$NOTES" | tr -d '[:space:]')" ]; then
-            NOTES="Release $TAG"
-          fi
-          gh release create "$TAG" --target main --title "$TAG" --notes "$NOTES"
-
-  # 准备发版：只生成/更新 Release PR，不直接发 Release
-  prepare:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'prepare'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      # release-please 会：
+      # - 解析 Conventional Commits（feat -> minor，fix -> patch）
+      # - 维护 CHANGELOG.md 与 .release-please-manifest.json
+      # - 首次 release 时创建 GitHub Release 并打 tag vX.Y.Z
       - uses: googleapis/release-please-action@v4
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          skip-github-release: true
