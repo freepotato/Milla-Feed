@@ -1,8 +1,14 @@
 name: release-please
 
-# 只在准备发版时手动运行：日常提交不会自动升版本、也不会生成 Release PR。
+# 两个入口：
+# - push：收尾。合并 Release PR 后才会打 tag、创建 GitHub Release；
+#   日常提交不会自动开下一个版本的 PR（避免版本号提前变化）。
+# - workflow_dispatch：准备发版时手动运行，生成/更新 Release PR。
 # 日常改动先记录到 docs/UNRELEASED.md，发版时再并入 docs/CHANGELOG.md。
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -10,16 +16,26 @@ permissions:
   pull-requests: write
 
 jobs:
-  release-please:
+  # 日常 push / Release PR 合并后运行：只负责创建 tag 与 GitHub Release
+  finalize:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # release-please 会：
-      # - 解析 Conventional Commits（feat -> minor，fix -> patch）
-      # - 维护 CHANGELOG.md 与 .release-please-manifest.json
-      # - 首次 release 时创建 GitHub Release 并打 tag vX.Y.Z
       - uses: googleapis/release-please-action@v4
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          skip-github-pull-request: true
+
+  # 手动准备发版：只生成/更新 Release PR，不直接发 Release
+  prepare:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          skip-github-release: true
