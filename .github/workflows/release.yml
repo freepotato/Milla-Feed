@@ -1,24 +1,34 @@
 name: release-please
 
-# 两个入口：
-# - push：收尾。合并 Release PR 后才会打 tag、创建 GitHub Release；
-#   日常提交不会自动开下一个版本的 PR（避免版本号提前变化）。
-# - workflow_dispatch：准备发版时手动运行，生成/更新 Release PR。
-# 日常改动先记录到 docs/UNRELEASED.md，发版时再并入 docs/CHANGELOG.md。
+# 发版流程（手动控制版本号变化）：
+# 1. 日常改动只记录到 docs/UNRELEASED.md，不会升版本；
+# 2. 准备发版时手动运行本工作流（mode=prepare），生成 Release PR；
+# 3. 在 GitHub 上合并 Release PR 后，push 事件会自动打 tag、创建 Release；
+#    若该步骤没有触发或失败，可手动运行本工作流（mode=finalize）补发。
 on:
   push:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "prepare = 生成 Release PR；finalize = 为已合并的 Release PR 打 tag 并发 Release"
+        type: choice
+        options:
+          - prepare
+          - finalize
+        default: prepare
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  # 日常 push / Release PR 合并后运行：只负责创建 tag 与 GitHub Release
+  # 合并 Release PR 后收尾（只对 release 合并提交生效，日常 push 不会跑）
   finalize:
-    if: github.event_name == 'push'
+    if: >-
+      (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore(main): release '))
+      || (github.event_name == 'workflow_dispatch' && inputs.mode == 'finalize')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,9 +38,9 @@ jobs:
           manifest-file: .release-please-manifest.json
           skip-github-pull-request: true
 
-  # 手动准备发版：只生成/更新 Release PR，不直接发 Release
+  # 准备发版：只生成/更新 Release PR，不直接发 Release
   prepare:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'prepare'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
