@@ -119,6 +119,7 @@ Android 暂无计划，但核心排序算法是跨平台 Swift 包，理论上�
 - [技术文档 TECHNICAL.md](docs/TECHNICAL.md) —— 架构、目录、构建步骤、CI/发版流程、iOS 27 适配策略
 - [算法通俗讲解 RANKING-EXPLAINED.md](docs/RANKING-EXPLAINED.md) —— 信息流排序与质量分级原理，以及后续改进方向
 - 核心算法是独立的纯 Swift 包（`Packages/MillaCore`），在 macOS / Windows / Linux 上都能跑测试
-- 版本发布：提交遵循 Conventional Commits（`feat:` → minor，`fix:` → patch），
-  [release-please](https://github.com/googleapis/release-please) 自动维护 CHANGELOG，
+- 版本发布：日常改动先记录到 [待发布记录](docs/UNRELEASED.md)（不影响 App 内日志与版本号），
+  准备发版时并入 [更新日志](docs/CHANGELOG.md)，再手动运行
+  [release-please](https://github.com/googleapis/release-please)，合并生成的 Release PR 即完成打 tag 与 GitHub Release，
   发版记录见 [Releases](https://github.com/freepotato/Milla-Feed/releases)

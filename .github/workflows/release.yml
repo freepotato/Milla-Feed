@@ -1,9 +1,9 @@
 name: release-please
 
+# 只在准备发版时手动运行：日常提交不会自动升版本、也不会生成 Release PR。
+# 日常改动先记录到 docs/UNRELEASED.md，发版时再并入 docs/CHANGELOG.md。
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: write

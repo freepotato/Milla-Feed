@@ -408,8 +408,10 @@ git push -u origin main
 | `feat!: 重写同步引擎` | BREAKING CHANGE，major 升级 `1.0.0` |
 | `chore/docs/ci/test/refactor` | 不触发版本升级 |
 
-推送到 `main` 后，release-please 会自动开/更新一个 **Release PR**，
-里面包含 `CHANGELOG.md` 与版本清单变更；合并该 PR 即自动：打 tag `vX.Y.Z`、创建 GitHub Release。
+日常提交只按 Conventional Commits 记录，**不会**自动升版本；改动先写进
+`docs/UNRELEASED.md`。准备发版时，把待发布记录并入 `docs/CHANGELOG.md`，
+再在 GitHub Actions 里手动运行 `release-please`（`workflow_dispatch`），
+它才会开/更新一个 **Release PR**；合并该 PR 即自动打 tag `vX.Y.Z`、创建 GitHub Release。
 
 ### 7.3 版本号 / 构建号 / Git tag 对应关系
 
