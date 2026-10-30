@@ -1,25 +1,5 @@
 # Changelog
 
-## [0.1.2](https://github.com/freepotato/Milla-Feed/compare/v0.1.1...v0.1.2) (2026-10-30)
-
-
-### Features
-
-* **feed:** show the latest 30 items and archive the rest by date ([5bb2424](https://github.com/freepotato/Milla-Feed/commit/5bb24240fd21374506e140acee5b77a474928421))
-* **news:** fetch the remoshuang ranked list in site order with a rising section ([48cfd3d](https://github.com/freepotato/Milla-Feed/commit/48cfd3d9249f60287c22fee49d07547e15cd3cbb))
-
-
-### Bug Fixes
-
-* **home:** hide the system scroll indicator ([171b529](https://github.com/freepotato/Milla-Feed/commit/171b5290a70ddd0f01f7f9e1f425b31a4b3c51b4))
-* **news:** keep ranked row ids unique and drop the refresh animation ([832ff76](https://github.com/freepotato/Milla-Feed/commit/832ff764be794419386c281860eec738b66502ad))
-* **ui:** make the feed scrollbar draggable and show the changelog version ([b941227](https://github.com/freepotato/Milla-Feed/commit/b941227e87a6f0debebc4734f0a3d9a52ebb05b7))
-
-
-### Reverts
-
-* **home:** use the native scroll indicator instead of the custom bar ([c5fa08e](https://github.com/freepotato/Milla-Feed/commit/c5fa08e4aff837acc099bc3bc127bb1c59847c15))
-
 ## [0.1.1](https://github.com/freepotato/Milla-Feed/compare/v0.1.0...v0.1.1) (2026-10-28)
 
 
