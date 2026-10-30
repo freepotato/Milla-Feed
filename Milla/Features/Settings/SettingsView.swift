@@ -21,6 +21,7 @@ struct SettingsView: View {
             defaultValuesSection(settings: _settings)
             sourcesSection
             aboutSection
+            historySection
             changelogSection
         }
         .navigationTitle("设置")
@@ -191,6 +192,19 @@ struct SettingsView: View {
                 Text(Self.appVersion)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private var historySection: some View {
+        Section {
+            NavigationLink {
+                HistoryView()
+            } label: {
+                Label("历史文章", systemImage: "archivebox")
+            }
+            .accessibilityLabel("查看历史文章")
+        } footer: {
+            Text("信息流只展示最新的 \(HomeViewModel.timelineLimit) 条，更早的文章按日期归档在这里。")
         }
     }
 

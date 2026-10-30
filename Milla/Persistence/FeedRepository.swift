@@ -256,6 +256,30 @@ final class FeedRepository {
         fetchArticle(identifier: identifier)?.isFavorite ?? false
     }
 
+    /// 归档文章：除信息流展示的前 `limit` 条之外的全部本地文章，按发布时间倒序。
+    /// 数据不删除，只是不在信息流里展示。
+    struct ArchiveData {
+        let items: [FeedItem]
+        let readIDs: Set<String>
+        let sourceTitles: [UUID: String]
+    }
+
+    func loadArchiveData(limit: Int = 30) -> ArchiveData {
+        let visibleIDs = Set(loadOrderedIdentifiers().prefix(limit))
+        let descriptor = FetchDescriptor<StoredFeedArticle>(
+            sortBy: [SortDescriptor(\.publishedAt, order: .reverse)]
+        )
+        let articles = (try? context.fetch(descriptor)) ?? []
+        let archived = articles.filter { !visibleIDs.contains($0.identifier) }
+        return ArchiveData(
+            items: archived.map { $0.makeCoreItem() },
+            readIDs: Set(archived.filter(\.isRead).map(\.identifier)),
+            sourceTitles: Dictionary(
+                uniqueKeysWithValues: allStoredSources().map { ($0.uuid, $0.title) }
+            )
+        )
+    }
+
     /// 收藏的文章（收藏列表页），按发布时间倒序。
     func favoriteItems() -> [FeedItem] {
         let descriptor = FetchDescriptor<StoredFeedArticle>(

@@ -99,4 +99,33 @@ final class ReaderFlowUITests: XCTestCase {
         attachment2.lifetime = .keepAlways
         add(attachment2)
     }
+
+    /// 设置里可以进入按日期归档的历史文章页
+    @MainActor
+    func testHistoryOpensFromSettings() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let settings = app.buttons["设置"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 20), "未找到设置入口")
+        settings.tap()
+
+        let entry = app.buttons["查看历史文章"]
+        for _ in 0..<3 {
+            if entry.exists { break }
+            app.swipeUp()
+        }
+        XCTAssertTrue(entry.waitForExistence(timeout: 5), "设置里没有历史文章入口")
+        entry.tap()
+
+        XCTAssertTrue(
+            app.navigationBars["历史文章"].waitForExistence(timeout: 5),
+            "未进入历史文章页"
+        )
+        let shot = XCUIScreen.main.screenshot()
+        let attachment = XCTAttachment(screenshot: shot)
+        attachment.name = "history-view"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
 }

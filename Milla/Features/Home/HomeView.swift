@@ -135,7 +135,7 @@ struct HomeView: View {
     }
 
     private var cardsBlock: some View {
-        ForEach(viewModel.rankedItems) { ranked in
+        ForEach(viewModel.visibleItems) { ranked in
             Button {
                 router.path.append(Route.article(ranked))
             } label: {

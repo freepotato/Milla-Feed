@@ -8,6 +8,7 @@ import MillaCore
 /// - 文章只增不换：下拉刷新不会重排或移除旧文章，已读文章同样保留；
 /// - 质量权重 / 时效权重 / 抽样只作用于"本次新增的文章批次"，
 ///   新批次按排序结果整体插到列表最前，旧文章顺序永久保持；
+/// - 信息流只展示最前面的 `timelineLimit` 条，其余仅归档不再展示；
 /// - 顺序通过 FeedRepository 持久化，App 重启后保持。
 ///
 /// 排序算法本身完全使用 MillaCore 的纯逻辑，本类只做
@@ -37,6 +38,14 @@ final class HomeViewModel {
 
     private(set) var state: LoadState = .initial
     private(set) var rankedItems: [RankedFeedItem] = []
+
+    /// 信息流只展示排序最前的若干条，其余继续留在本地，作为历史文章归档。
+    static let timelineLimit = 30
+
+    var visibleItems: [RankedFeedItem] {
+        Array(rankedItems.prefix(Self.timelineLimit))
+    }
+
     private(set) var sourceTitles: [UUID: String] = [:]
     private(set) var readIDs: Set<String> = []
     private(set) var failureMessage: String?
