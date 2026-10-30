@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/freepotato/Milla-Feed/compare/v0.1.2...v0.1.3) (2026-10-30)
+
+
+### Reverts
+
+* **ci:** restore the automatic release-please flow ([be85978](https://github.com/freepotato/Milla-Feed/commit/be859786effed28eff6e96250fa744da7869d295))
+
 ## [0.1.2](https://github.com/freepotato/Milla-Feed/compare/v0.1.1...v0.1.2) (2026-10-30)
 
 

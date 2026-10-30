@@ -18,7 +18,7 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     # 发版时由 release-please 自动改写（见 release-please-config.json 的 extra-files），勿手改
-    MARKETING_VERSION: "0.1.2" # x-release-please-version
+    MARKETING_VERSION: "0.1.3" # x-release-please-version
     CURRENT_PROJECT_VERSION: "1"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
